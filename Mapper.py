@@ -1,28 +1,30 @@
 import ast
 
 
-# Not fully recursive
-def search_function(root):
-    # print("Running sf")
-    # print(ast.dump(root))
+class FuncLister(ast.NodeVisitor):
+    current_func = "file"
+    theGraph = {}
 
-    for node in ast.iter_child_nodes(root):
-        # print(ast.dump(node))
-        if isinstance(node, ast.FunctionDef):
-            print("Def " + node.name)
-            search_function(node)
-        if isinstance(node, ast.Call):
-            print("Call " + node.func.id + " from " + root.func.id)
+    def visit_FunctionDef(self, node):
+        # print("Def " + node.name)
+        self.current_func = node.name
+        self.generic_visit(node)
 
-    # print("Finished sf")
+    def visit_Call(self, node):
+        # print("Call " + node.func.id + " from " + self.current_func)
+        if self.current_func in self.theGraph:
+            self.theGraph[self.current_func].append(node.func.id)
+        else:
+            self.theGraph[self.current_func] = [node.func.id]
+        self.generic_visit(node)
+
+    def get_graph(self):
+        return self.theGraph
 
 
 tree = ast.parse(open('TestFunctions.py').read())
+FuncLister().visit(tree)
 
-theGraph = {}
 
-# print(ast.dump(tree))
-search_function(tree)
-
-# for node in theGraph:
-#     print(node)
+testGraph = FuncLister().get_graph()
+print("Complete")
