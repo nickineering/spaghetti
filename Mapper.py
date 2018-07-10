@@ -1,4 +1,4 @@
-import ast
+import ast, sys, argparse
 
 
 class FuncLister(ast.NodeVisitor):
@@ -22,9 +22,19 @@ class FuncLister(ast.NodeVisitor):
         return self.theGraph
 
 
-tree = ast.parse(open('TestFunctions.py').read())
-FuncLister().visit(tree)
+parser = argparse.ArgumentParser(description='Graph interfunctional Python dependencies.')
+parser.add_argument('--filename', '-f', metavar='F', type=str, nargs=1, help='Specify filename')
+args = parser.parse_args()
+if args.filename:
+    filename = args.filename[0]
+else:
+    filename = input("Filename to examine: ")
 
+if filename[-3:] != ".py":
+    filename += ".py"
+
+tree = ast.parse(open(filename).read())
+FuncLister().visit(tree)
 
 testGraph = FuncLister().get_graph()
 print("Complete")
