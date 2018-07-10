@@ -1,9 +1,13 @@
-import ast, sys, argparse
+import ast, argparse
 
 
 class FuncLister(ast.NodeVisitor):
     current_func = "file"
     theGraph = {}
+    built_ins = False
+
+    def __init__(self, built_ins=False):
+        self.built_ins = built_ins
 
     def visit_FunctionDef(self, node):
         # print("Def " + node.name)
@@ -12,6 +16,7 @@ class FuncLister(ast.NodeVisitor):
 
     def visit_Call(self, node):
         # print("Call " + node.func.id + " from " + self.current_func)
+        # Should check here if it is a built-in function
         if self.current_func in self.theGraph:
             self.theGraph[self.current_func].append(node.func.id)
         else:
@@ -23,7 +28,11 @@ class FuncLister(ast.NodeVisitor):
 
 
 parser = argparse.ArgumentParser(description='Graph interfunctional Python dependencies.')
-parser.add_argument('--filename', '-f', metavar='F', type=str, nargs=1, help='Specify filename')
+parser.add_argument('--filename', '-f', metavar='F', type=str, nargs=1,
+                    help="Specify the name of the file to be examined.")
+parser.add_argument('--built-ins', '-b', action='store_true',
+                    help="Also graph when Python's built in functions are used.")
+
 args = parser.parse_args()
 if args.filename:
     filename = args.filename[0]
@@ -34,7 +43,10 @@ if filename[-3:] != ".py":
     filename += ".py"
 
 tree = ast.parse(open(filename).read())
-FuncLister().visit(tree)
+FuncLister(args.built_ins).visit(tree)
 
 testGraph = FuncLister().get_graph()
+for node in testGraph:
+    for call in testGraph[node]:
+        print(node + " " + call)
 print("Complete")
