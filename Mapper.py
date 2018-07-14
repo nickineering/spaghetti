@@ -1,18 +1,44 @@
 import ast
 import argparse
+import copy
 # import builtins
 
 
 class FuncNode:
-    _name = ""
+    _filename = ""
     _class_name = ""
+    _name = ""
+    _calls = set()
 
-    def __init__(self, name="none", class_name="none"):
-        self._name = name
+    def __init__(self, filename="", class_name="", name="", calls=set()):
+        self._filename = filename
         self._class_name = class_name
+        self._name = name
+        self._calls = calls
 
-    def get_name(self):
-        return self._name
+    def __repr__(self):
+        return self._class_name + "." + self._name
+
+
+    def __eq__(self, other):
+        return (
+            self.__class__ == other.__class__ and
+            self._filename == other.get_filename() and
+            self._class_name == other.get_class() and
+            self._name == other.get_name()
+        )
+
+    def __hash__(self):
+        return hash((self._filename, self._class_name, self._name))
+
+    def set_filename(self, filename):
+        self._filename = filename
+
+    def get_filename(self):
+        return self._filename
+
+    def set_class(self, class_name):
+        self._class_name = class_name
 
     def get_class(self):
         return self._class_name
@@ -20,16 +46,34 @@ class FuncNode:
     def set_name(self, name):
         self._name = name
 
-    def set_class(self, class_name):
-        self._class_name = class_name
+    def get_name(self):
+        return self._name
+
+    def add_call(self, call):
+        self._calls.add(call)
+
+    def clear_calls(self):
+        self._calls.clear()
+
+    def get_calls(self):
+        return self._calls
+
+    def get_calls_str(self):
+        return_str = ""
+        for call in self._calls:
+            return_str += "(" + call + ")"
+        return return_str
 
 
 class FuncLister(ast.NodeVisitor):
-    funcNode = FuncNode()
+    filename = ""
+    current_class = ""
+    current_function = ""
     theGraph = {}
     built_ins = False
 
-    def __init__(self, built_ins=False):
+    def __init__(self, filename, built_ins=False):
+        self.filename = filename
         self.built_ins = built_ins
 
     def visit_ClassDef(self, node):
@@ -39,7 +83,7 @@ class FuncLister(ast.NodeVisitor):
 
     def visit_FunctionDef(self, node):
         # print("Def " + node.name)
-        self.current_func = node.name
+        self.current_function = node.name
         self.generic_visit(node)
 
     def visit_Call(self, node):
@@ -47,19 +91,18 @@ class FuncLister(ast.NodeVisitor):
         # Should check here if it is a built-in function
         # print("Current: " + self.current_func)
         # print(ast.dump(node))
-        if self.current_func in self.theGraph:
-            try:
-                self.theGraph[self.current_func].append([node.func.id, self.current_class])
-            except AttributeError:
-                self.theGraph[self.current_func].append([node.func.attr, self.current_class])
-                pass
-        else:
-            try:
-                self.theGraph[self.current_func] = [[node.func.id], self.current_class]
-            except AttributeError:
-                print(ast.dump(node))
-                # self.theGraph[self.current_func] = [node.func.value.id]
-                pass
+        try:
+            call = node.func.id
+        except AttributeError:
+            call = node.func.attr
+
+        funcNode = FuncNode(filename=self.filename, class_name=self.current_class, name=self.current_function)
+        if funcNode not in self.theGraph:
+            # print("not in")
+            self.theGraph[funcNode] = funcNode
+        self.theGraph[funcNode].add_call(call)
+        # print(repr(self.theGraph[funcNode]) + " " + self.theGraph[funcNode].get_calls_str())
+
         self.generic_visit(node)
 
     def get_graph(self):
@@ -86,11 +129,10 @@ if filename[-3:] != ".py":
     filename += ".py"
 
 tree = ast.parse(open(filename).read())
-lister = FuncLister(args.built_ins)
+lister = FuncLister(filename, args.built_ins)
 lister.visit(tree)
 
 testGraph = lister.get_graph()
 for node in testGraph:
-    for call in testGraph[node]:
-        print(node + " " + call[1] + "." + call[0])
+    print(repr(node) + " " + repr(node.get_calls_str()))
 print("Complete")
