@@ -5,20 +5,15 @@ import copy
 
 
 class FuncNode:
-    _filename = ""
-    _class_name = ""
-    _name = ""
-    _calls = set()
 
-    def __init__(self, filename="", class_name="", name="", calls=set()):
+    def __init__(self, filename="", class_name="", name=""):
         self._filename = filename
         self._class_name = class_name
         self._name = name
-        self._calls = calls
+        self._calls = set()
 
     def __repr__(self):
         return self._class_name + "." + self._name
-
 
     def __eq__(self, other):
         return (
@@ -70,7 +65,6 @@ class FuncLister(ast.NodeVisitor):
     current_class = ""
     current_function = ""
     theGraph = {}
-    built_ins = False
 
     def __init__(self, filename, built_ins=False):
         self.filename = filename
@@ -98,7 +92,6 @@ class FuncLister(ast.NodeVisitor):
 
         funcNode = FuncNode(filename=self.filename, class_name=self.current_class, name=self.current_function)
         if funcNode not in self.theGraph:
-            # print("not in")
             self.theGraph[funcNode] = funcNode
         self.theGraph[funcNode].add_call(call)
         # print(repr(self.theGraph[funcNode]) + " " + self.theGraph[funcNode].get_calls_str())

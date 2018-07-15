@@ -8,8 +8,8 @@ def function2():
 
 
 def function3():
-    print("function3")
     recursive_function(5)
+    print("function3")
 
 
 def function4():
