@@ -12,9 +12,9 @@ class FuncNode:
         self._name = name
 
         # All of the other nodes this node calls.
-        self._calls = set()
+        self._dependencies = set()
         # All the other nodes that call this node.
-        self._called_by = set()
+        self._dependents = set()
         self._ast_node = ast_node
 
     def __repr__(self):
@@ -41,26 +41,26 @@ class FuncNode:
     def get_name(self):
         return self._name
 
-    def add_call(self, call):
-        self._calls.add(call)
+    def add_dependency(self, dependency):
+        self._dependencies.add(dependency)
 
-    def add_called_by(self, called_by):
-        self._called_by.add(called_by)
+    def get_dependencies(self):
+        return self._dependencies
 
-    def get_calls(self):
-        return self._calls
+    def add_dependent(self, dependent):
+        self._dependents.add(dependent)
 
-    def get_called_by(self):
-        return self._called_by
+    def get_dependents(self):
+        return self._dependents
 
-    def get_calls_str(self, calls=False):
-        if calls is True:
-            edges = self._calls
+    def get_edges_str(self, dependencies=False):
+        if dependencies is True:
+            edges = self._dependencies
         else:
-            edges = self._called_by
+            edges = self._dependents
         return_str = ""
-        for call in edges:
-            return_str += "(" + repr(call) + ")"
+        for edge in edges:
+            return_str += "(" + repr(edge) + ")"
         return return_str
 
     def get_ast_node(self):
@@ -125,28 +125,29 @@ class EdgeDetector(ASTParser):
         # There should be a more efficient way to do this, but basically it is trying to determine enough information
         # about the node being called to generate that node's hash so the two can be linked.
         try:
-            call = node.func.id
+            dependency = node.func.id
         except AttributeError:
             try:
-                call = node.func.attr
+                dependency = node.func.attr
                 # class_name = node.func.value.id
             except AttributeError:
-                call = node.func.value.id
+                dependency = node.func.value.id
 
         # Checks if the current call is to a built-in function.
         is_built_in = False
-        if call in dir(__builtins__):
+        if dependency in dir(__builtins__):
             is_built_in = True
         if is_built_in is False or self.allow_built_ins is True:
-            called_node = None
+            dependency_node = None
             already_found = False
             for n in self.graph:
                 # Searches the graph for a node that resembles the called node. Might not work if multiple nodes are
                 # named the same or if the node is not in the graph.
-                if n.get_name() == call:
-                    called_node = n
+                if n.get_name() == dependency:
+                    dependency_node = n
                     if already_found is True:
-                        print("Mapper could not definitively determine the instance of " + call + " that was called by " +
+                        print("Mapper could not definitively determine the instance of " + dependency
+                              + " that was called by " +
                               self.current_function)
                     already_found = True
 
@@ -155,32 +156,29 @@ class EdgeDetector(ASTParser):
 
             # This ideally would never be called. It only exists because the author is presently unaware of a
             # definitive way to determine the identity of a function called in an AST node.
-            if called_node is None:
+            if dependency_node is None:
                 if is_built_in is True:
                     class_name = "Builtins"
-                    call_file = "System"
+                    dependency_file = "System"
                 else:
                     class_name = "Unknown"
-                    call_file = "Unknown"
-                called_node = FuncNode(filename=call_file, class_name=class_name, name=call)
+                    dependency_file = "Unknown"
+                dependency_node = FuncNode(filename=dependency_file, class_name=class_name, name=dependency)
 
             # Creates this node if it was not already in the graph.
             try:
                 this_node
             except NameError:
-                this_node = FuncNode(filename=self.current_filename, class_name=self.current_class, name=self.current_function)
+                this_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
+                                     name=self.current_function, ast_node=node)
 
             # Ensures that the relevant nodes are in the graph if they were not already.
             self.add_node(this_node)
-            self.add_node(called_node)
+            self.add_node(dependency_node)
 
             # This works even if the node was not added to the graph because the existing node's hash would be the same.
-            self.graph[this_node].add_call(called_node)
-            self.graph[called_node].add_called_by(this_node)
-
-            # print(repr(self.graph[this_node]) + " " + self.graph[this_node].get_calls_str())
-            # print(ast.dump(node))
-            # print()
+            self.graph[this_node].add_dependency(dependency_node)
+            self.graph[dependency_node].add_dependent(this_node)
 
         self.generic_visit(node)
 
@@ -188,12 +186,16 @@ class EdgeDetector(ASTParser):
 # Main initial execution of the script via the command-line.
 def main():
     # Configures the command-line interface.
-    parser = argparse.ArgumentParser(description='Graph interfunctional Python dependencies. For all functions searched'
-                                                 '(listed far left) the functions to the right depend on it.')
+    parser = argparse.ArgumentParser(description='Graph interfunctional Python dependencies. Searches given modules and'
+                                                 'lists included functions along with their dependents.')
     parser.add_argument('--filename', '-f', metavar='F', type=str, nargs=1,
                         help="Specify the name of the file to be examined.")
+    parser.add_argument('--inverse', '-i', action='store_true', default=False,
+                        help="Inverse output so that dependencies are listed instead of dependents.")
     parser.add_argument('--built-ins', '-b', action='store_true',
                         help="Also graph when Python's built in functions are used.")
+    parser.add_argument('--raw', '-r', action='store_true', default=False,
+                        help="Remove instruction text and formatting.")
     parser.add_argument('--debug', '-d', dest='debug', action='store_true', default=False,
                         help="Enable debugging output.")
     args = parser.parse_args()
@@ -218,9 +220,20 @@ def main():
     logger.visit(tree)
 
     # Outputs the graph parsed from the AST in string form.
+    indent = ""
+    if args.raw is not True:
+        print("Mapper searched " + filename)
+        print()
+        if args.inverse is True:
+            dependents_string = "Dependencies"
+        else:
+            dependents_string = "Dependents"
+        print("%-20s %-20s" % ("Function Name", dependents_string))
+        print()
+        indent = "-20"
     for node in graph:
-        print(repr(node) + " " + repr(node.get_calls_str()))
-
+        format_string = "%" + indent + "s %" + indent + "s"
+        print(format_string % (node, node.get_edges_str(dependencies=args.inverse)))
     pass
 
 
