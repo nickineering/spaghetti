@@ -5,6 +5,7 @@ def function1():
     print("function1")
     function2()
     tester2.t2function1()
+    print(lambda_example(5))
 
 
 def function2():
@@ -14,8 +15,8 @@ def function2():
 def function3():
     recursive_function(5)
     print("function3")
-    # t2Class = tester2.T2Class()
-    # t2Class.t2method2()
+    t2Class = tester2.T2Class()
+    t2Class.t2method2()
 
 
 def function4():
@@ -38,6 +39,10 @@ def outer_function():
         function2()
 
     inner_function()
+
+
+def lambda_example(n):
+    return lambda x: x + n
 
 
 class TestClass():

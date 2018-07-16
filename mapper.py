@@ -6,7 +6,7 @@ import os
 # Represents function nodes in the graph.
 class FuncNode:
 
-    def __init__(self, filename="", class_name="", name=""):
+    def __init__(self, filename="", class_name="", name="", ast_node=None):
         self._filename = filename
         self._class_name = class_name
         self._name = name
@@ -15,6 +15,7 @@ class FuncNode:
         self._calls = set()
         # All the other nodes that call this node.
         self._called_by = set()
+        self._ast_node = ast_node
 
     def __repr__(self):
         return self._class_name + "." + self._name
@@ -62,14 +63,17 @@ class FuncNode:
             return_str += "(" + repr(call) + ")"
         return return_str
 
+    def get_ast_node(self):
+        return self._ast_node
 
-# The class that parses the AST.
-class FuncLister(ast.NodeVisitor):
+
+# Parent class for basic AST parsing. Meant to be extended depending on the task.
+class ASTParser(ast.NodeVisitor):
     current_class = ""
     current_function = ""
     graph = {}
 
-    def __init__(self, filename="", built_ins=False):
+    def __init__(self, filename="", graph=None, built_ins=False):
         self.filename = filename
         self.allow_built_ins = built_ins
 
@@ -78,6 +82,9 @@ class FuncLister(ast.NodeVisitor):
         # Removes directory for simplicity. Should be included in future versions.
         self.current_filename = self.current_filename.split(os.sep)[-1]
 
+        if graph is not None:
+            self.graph = graph
+
     def visit_ClassDef(self, node):
         self.current_class = node.name
         self.generic_visit(node)
@@ -85,58 +92,6 @@ class FuncLister(ast.NodeVisitor):
     # Creates a node for the function even though it might not be connected to any other nodes.
     def visit_FunctionDef(self, node):
         self.current_function = node.name
-        current_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
-                                name=self.current_function)
-        self.add_node(current_node)
-        self.generic_visit(node)
-
-    # Records actual function calls
-    def visit_Call(self, node):
-
-        # Begin makeshift area. There should be a more efficient way to do this, but basically it is trying to determine
-        # enough information about the node being called to generate that node's hash so the two can be linked.
-        class_name = ""
-        try:
-            call = node.func.id
-        except AttributeError:
-            try:
-                call = node.func.attr
-                class_name = node.func.value.id
-            except AttributeError:
-                call = node.func.value.id
-        try:
-            call_file = node.func.value.id
-        except AttributeError:
-            call_file = self.current_filename
-
-        if class_name == "self":
-            class_name = self.current_class
-            call_file = self.current_filename
-        if class_name == call_file:
-            class_name = ""
-
-        # End makeshift area.
-
-        # Checks if the current call is to a built-in function.
-        is_built_in = False
-        if call in dir(__builtins__):
-            is_built_in = True
-            call_file = ''
-
-        if is_built_in is False or self.allow_built_ins is True:
-            this_node = FuncNode(filename=self.current_filename, class_name=self.current_class, name=self.current_function)
-            self.add_node(this_node)
-            called_node = FuncNode(filename=call_file, class_name=class_name, name=call)
-            self.add_node(called_node)
-
-            # This works even if the node was not added to the graph because the existing node's hash would be the same.
-            self.graph[this_node].add_call(called_node)
-            self.graph[called_node].add_called_by(this_node)
-
-            # print(repr(self.graph[this_node]) + " " + self.graph[this_node].get_calls_str())
-            # print(ast.dump(node))
-            # print()
-
         self.generic_visit(node)
 
     # Returns the graph this instance created.
@@ -149,10 +104,92 @@ class FuncLister(ast.NodeVisitor):
             self.graph[node] = node
 
 
+# Searches AST for nodes and adds them to the graph.
+class NodeCreator(ASTParser):
+
+    # Creates a node for the function even though it might not be connected to any other nodes.
+    def visit_FunctionDef(self, node):
+        self.current_function = node.name
+        current_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
+                                name=self.current_function, ast_node=node)
+        self.add_node(current_node)
+        self.generic_visit(node)
+
+
+# Detects connections in the AST and adds them as edges in the graph.
+class EdgeDetector(ASTParser):
+
+    # Records actual function calls
+    def visit_Call(self, node):
+
+        # There should be a more efficient way to do this, but basically it is trying to determine enough information
+        # about the node being called to generate that node's hash so the two can be linked.
+        try:
+            call = node.func.id
+        except AttributeError:
+            try:
+                call = node.func.attr
+                # class_name = node.func.value.id
+            except AttributeError:
+                call = node.func.value.id
+
+        # Checks if the current call is to a built-in function.
+        is_built_in = False
+        if call in dir(__builtins__):
+            is_built_in = True
+        if is_built_in is False or self.allow_built_ins is True:
+            called_node = None
+            already_found = False
+            for n in self.graph:
+                # Searches the graph for a node that resembles the called node. Might not work if multiple nodes are
+                # named the same or if the node is not in the graph.
+                if n.get_name() == call:
+                    called_node = n
+                    if already_found is True:
+                        print("Mapper could not definitively determine the instance of " + call + " that was called by " +
+                              self.current_function)
+                    already_found = True
+
+                if n.get_ast_node() == node:
+                    this_node = n
+
+            # This ideally would never be called. It only exists because the author is presently unaware of a
+            # definitive way to determine the identity of a function called in an AST node.
+            if called_node is None:
+                if is_built_in is True:
+                    class_name = "Builtins"
+                    call_file = "System"
+                else:
+                    class_name = "Unknown"
+                    call_file = "Unknown"
+                called_node = FuncNode(filename=call_file, class_name=class_name, name=call)
+
+            # Creates this node if it was not already in the graph.
+            try:
+                this_node
+            except NameError:
+                this_node = FuncNode(filename=self.current_filename, class_name=self.current_class, name=self.current_function)
+
+            # Ensures that the relevant nodes are in the graph if they were not already.
+            self.add_node(this_node)
+            self.add_node(called_node)
+
+            # This works even if the node was not added to the graph because the existing node's hash would be the same.
+            self.graph[this_node].add_call(called_node)
+            self.graph[called_node].add_called_by(this_node)
+
+            # print(repr(self.graph[this_node]) + " " + self.graph[this_node].get_calls_str())
+            # print(ast.dump(node))
+            # print()
+
+        self.generic_visit(node)
+
+
 # Main initial execution of the script via the command-line.
 def main():
     # Configures the command-line interface.
-    parser = argparse.ArgumentParser(description='Graph interfunctional Python dependencies.')
+    parser = argparse.ArgumentParser(description='Graph interfunctional Python dependencies. For all functions searched'
+                                                 '(listed far left) the functions to the right depend on it.')
     parser.add_argument('--filename', '-f', metavar='F', type=str, nargs=1,
                         help="Specify the name of the file to be examined.")
     parser.add_argument('--built-ins', '-b', action='store_true',
@@ -174,12 +211,14 @@ def main():
 
     # Creates the AST in the "tree" variable and then uses the FuncLister class to parse it.
     tree = ast.parse(open(filename).read())
-    lister = FuncLister(filename, args.built_ins)
-    lister.visit(tree)
+    creator = NodeCreator(filename)
+    creator.visit(tree)
+    graph = creator.get_graph()
+    logger = EdgeDetector(filename, graph, args.built_ins)
+    logger.visit(tree)
 
     # Outputs the graph parsed from the AST in string form.
-    output_graph = lister.get_graph()
-    for node in output_graph:
+    for node in graph:
         print(repr(node) + " " + repr(node.get_calls_str()))
 
     pass
