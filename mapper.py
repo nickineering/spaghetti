@@ -13,6 +13,8 @@ class FuncNode:
 
         # All of the other nodes this node calls.
         self._calls = set()
+        # All the other nodes that call this node.
+        self._called_by = set()
 
     def __repr__(self):
         return self._class_name + "." + self._name
@@ -41,12 +43,22 @@ class FuncNode:
     def add_call(self, call):
         self._calls.add(call)
 
+    def add_called_by(self, called_by):
+        self._called_by.add(called_by)
+
     def get_calls(self):
         return self._calls
 
-    def get_calls_str(self):
+    def get_called_by(self):
+        return self._called_by
+
+    def get_calls_str(self, calls=False):
+        if calls is True:
+            edges = self._calls
+        else:
+            edges = self._called_by
         return_str = ""
-        for call in self._calls:
+        for call in edges:
             return_str += "(" + repr(call) + ")"
         return return_str
 
@@ -119,6 +131,7 @@ class FuncLister(ast.NodeVisitor):
 
             # This works even if the node was not added to the graph because the existing node's hash would be the same.
             self.graph[this_node].add_call(called_node)
+            self.graph[called_node].add_called_by(this_node)
 
             # print(repr(self.graph[this_node]) + " " + self.graph[this_node].get_calls_str())
             # print(ast.dump(node))
@@ -169,10 +182,9 @@ def main():
     for node in output_graph:
         print(repr(node) + " " + repr(node.get_calls_str()))
 
+    pass
+
 
 # Calls the main function to start the script.
 if __name__ == "__main__":
     main()
-
-print("")
-print("SCRIPT COMPLETE")
