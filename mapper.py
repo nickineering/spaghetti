@@ -136,36 +136,43 @@ class FuncLister(ast.NodeVisitor):
             self.graph[node] = node
 
 
-# Configures the command-line interface.
-parser = argparse.ArgumentParser(description='Graph interfunctional Python dependencies.')
-parser.add_argument('--filename', '-f', metavar='F', type=str, nargs=1,
-                    help="Specify the name of the file to be examined.")
-parser.add_argument('--built-ins', '-b', action='store_true',
-                    help="Also graph when Python's built in functions are used.")
-parser.add_argument('--debug', '-d', dest='debug', action='store_true', default=False,
-                    help="Enable debugging output.")
-args = parser.parse_args()
+# Main initial execution of the script via the command-line.
+def main():
+    # Configures the command-line interface.
+    parser = argparse.ArgumentParser(description='Graph interfunctional Python dependencies.')
+    parser.add_argument('--filename', '-f', metavar='F', type=str, nargs=1,
+                        help="Specify the name of the file to be examined.")
+    parser.add_argument('--built-ins', '-b', action='store_true',
+                        help="Also graph when Python's built in functions are used.")
+    parser.add_argument('--debug', '-d', dest='debug', action='store_true', default=False,
+                        help="Enable debugging output.")
+    args = parser.parse_args()
 
-# Processes the input parameters.
-DEBUG = args.debug
-if args.filename:
-    filename = args.filename[0]
-else:
-    filename = input("Filename to examine: ")
+    # Processes the input parameters.
+    DEBUG = args.debug
+    if args.filename:
+        filename = args.filename[0]
+    else:
+        filename = input("Filename to examine: ")
 
-# Adds ".py" to the end of the file if that was not specified.
-if filename[-3:] != ".py":
-    filename += ".py"
+    # Adds ".py" to the end of the file if that was not specified.
+    if filename[-3:] != ".py":
+        filename += ".py"
 
-# Creates the AST in the "tree" variable and then uses the FuncLister class to parse it.
-tree = ast.parse(open(filename).read())
-lister = FuncLister(filename, args.built_ins)
-lister.visit(tree)
+    # Creates the AST in the "tree" variable and then uses the FuncLister class to parse it.
+    tree = ast.parse(open(filename).read())
+    lister = FuncLister(filename, args.built_ins)
+    lister.visit(tree)
 
-# Outputs the graph parsed from the AST in string form.
-output_graph = lister.get_graph()
-for node in output_graph:
-    print(repr(node) + " " + repr(node.get_calls_str()))
+    # Outputs the graph parsed from the AST in string form.
+    output_graph = lister.get_graph()
+    for node in output_graph:
+        print(repr(node) + " " + repr(node.get_calls_str()))
+
+
+# Calls the main function to start the script.
+if __name__ == "__main__":
+    main()
 
 print("")
 print("SCRIPT COMPLETE")
