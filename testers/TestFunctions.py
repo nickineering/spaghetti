@@ -1,6 +1,10 @@
+from testers import tester2
+
+
 def function1():
     print("function1")
     function2()
+    tester2.t2function1()
 
 
 def function2():
@@ -10,6 +14,8 @@ def function2():
 def function3():
     recursive_function(5)
     print("function3")
+    # t2Class = tester2.T2Class()
+    # t2Class.t2method2()
 
 
 def function4():

@@ -1,7 +1,8 @@
 import ast
 import argparse
 import copy
-# import builtins
+import builtins
+import os
 
 
 class FuncNode:
@@ -56,7 +57,7 @@ class FuncNode:
     def get_calls_str(self):
         return_str = ""
         for call in self._calls:
-            return_str += "(" + call + ")"
+            return_str += "(" + repr(call) + ")"
         return return_str
 
 
@@ -68,7 +69,9 @@ class FuncLister(ast.NodeVisitor):
 
     def __init__(self, filename, built_ins=False):
         self.filename = filename
-        self.built_ins = built_ins
+        self.allow_built_ins = built_ins
+        self.current_filename = self.filename[:-3]
+        self.current_filename = self.current_filename.split(os.sep)[-1]
 
     def visit_ClassDef(self, node):
         # print("Class " + node.name)
@@ -78,6 +81,10 @@ class FuncLister(ast.NodeVisitor):
     def visit_FunctionDef(self, node):
         # print("Def " + node.name)
         self.current_function = node.name
+        current_node = FuncNode(filename=self.current_filename, class_name=self.current_class, name=self.current_function)
+        if current_node not in self.theGraph:
+            self.theGraph[current_node] = current_node
+
         self.generic_visit(node)
 
     def visit_Call(self, node):
@@ -85,16 +92,48 @@ class FuncLister(ast.NodeVisitor):
         # Should check here if it is a built-in function
         # print("Current: " + self.current_func)
         # print(ast.dump(node))
+
+        class_name = ""
         try:
             call = node.func.id
         except AttributeError:
-            call = node.func.attr
+            try:
+                call = node.func.attr
+                class_name = node.func.value.id
+            except AttributeError:
+                call = node.func.value.id
 
-        funcNode = FuncNode(filename=self.filename, class_name=self.current_class, name=self.current_function)
-        if funcNode not in self.theGraph:
-            self.theGraph[funcNode] = funcNode
-        self.theGraph[funcNode].add_call(call)
-        # print(repr(self.theGraph[funcNode]) + " " + self.theGraph[funcNode].get_calls_str())
+        try:
+            call_file = node.func.value.id
+        except AttributeError:
+            call_file = self.current_filename
+
+        if class_name == "self":
+            class_name = self.current_class
+            call_file = self.current_filename
+
+        if class_name == call_file:
+            class_name = ""
+
+        is_built_in = False
+        if call in dir(__builtins__):
+            is_built_in = True
+            call_file = ''
+
+
+        if is_built_in is False or self.allow_built_ins is True:
+
+            callNode = FuncNode(filename=call_file, class_name=class_name, name=call)
+            if callNode not in self.theGraph:
+                self.theGraph[callNode] = callNode
+
+            funcNode = FuncNode(filename=self.current_filename, class_name=self.current_class, name=self.current_function)
+            if funcNode not in self.theGraph:
+                self.theGraph[funcNode] = funcNode
+            self.theGraph[funcNode].add_call(callNode)
+            # print(repr(self.theGraph[funcNode]) + " " + self.theGraph[funcNode].get_calls_str())
+            # print(ast.dump(node))
+            # print()
 
         self.generic_visit(node)
 
