@@ -1,6 +1,7 @@
 import ast
 import argparse
 import os
+import sys
 
 
 # Represents function nodes in the graph.
@@ -73,7 +74,7 @@ class ASTParser(ast.NodeVisitor):
     current_function = ""
     graph = {}
 
-    def __init__(self, filename="", graph=None, built_ins=False):
+    def __init__(self, filename="", built_ins=False):
         self.filename = filename
         self.allow_built_ins = built_ins
 
@@ -81,9 +82,6 @@ class ASTParser(ast.NodeVisitor):
         self.current_filename = self.filename[:-3]
         # Removes directory for simplicity. Should be included in future versions.
         self.current_filename = self.current_filename.split(os.sep)[-1]
-
-        if graph is not None:
-            self.graph = graph
 
     def visit_ClassDef(self, node):
         self.current_class = node.name
@@ -135,7 +133,7 @@ class EdgeDetector(ASTParser):
 
         # Checks if the current call is to a built-in function.
         is_built_in = False
-        if dependency in dir(__builtins__):
+        if dependency in dir(__builtins__):  # sys.builtin_module_names
             is_built_in = True
         if is_built_in is False or self.allow_built_ins is True:
             dependency_node = None
@@ -185,39 +183,67 @@ class EdgeDetector(ASTParser):
 
 # Main initial execution of the script via the command-line.
 def main():
+
+    def create_graph(found_filename):
+        py_files.append(found_filename)
+        tree[found_filename] = ast.parse(open(found_filename).read())
+        creator[found_filename] = NodeCreator(found_filename)
+        creator[found_filename].visit(tree[found_filename])
+        return {**graph, **creator[found_filename].get_graph()}
+
     # Configures the command-line interface.
     parser = argparse.ArgumentParser(description='Graph interfunctional Python dependencies. Searches given modules and'
                                                  'lists included functions along with their dependents.')
     parser.add_argument('--filename', '-f', metavar='F', type=str, nargs=1,
-                        help="Specify the name of the file to be examined.")
+                        help="Specify the name of the file to examine. Only one file or directory at once.")
+    parser.add_argument('--directory', '-d', metavar='D', type=str, nargs=1,
+                        help="Specify the directory to examine. Only one file or directory at once.")
     parser.add_argument('--inverse', '-i', action='store_true', default=False,
                         help="Inverse output so that dependencies are listed instead of dependents.")
     parser.add_argument('--built-ins', '-b', action='store_true',
                         help="Also graph when Python's built in functions are used.")
     parser.add_argument('--raw', '-r', action='store_true', default=False,
                         help="Remove instruction text and formatting.")
-    parser.add_argument('--debug', '-d', dest='debug', action='store_true', default=False,
-                        help="Enable debugging output.")
     args = parser.parse_args()
 
     # Processes the input parameters.
-    DEBUG = args.debug
-    if args.filename:
+    single_file = True
+    if args.directory:
+        filename = args.directory[0]
+        single_file = False
+    elif args.filename:
         filename = args.filename[0]
     else:
         filename = input("Filename to examine: ")
 
-    # Adds ".py" to the end of the file if that was not specified.
-    if filename[-3:] != ".py":
-        filename += ".py"
+    tree = {}
+    creator = {}
+    py_files = []
+    graph = {}
+    logger = {}
 
-    # Creates the AST in the "tree" variable and then uses the FuncLister class to parse it.
-    tree = ast.parse(open(filename).read())
-    creator = NodeCreator(filename)
-    creator.visit(tree)
-    graph = creator.get_graph()
-    logger = EdgeDetector(filename, graph, args.built_ins)
-    logger.visit(tree)
+    if single_file is True:
+        # Adds ".py" to the end of the file if that was not specified.
+        if filename[-3:] != ".py":
+            filename += ".py"
+
+        file_dir = filename.split(os.sep)
+        working_dir_str = sys.path[0] + os.sep
+        for directory in file_dir[:-1]:
+            working_dir_str += directory
+        create_graph(filename)
+    else:
+        working_dir_str = sys.path[0] + os.sep + filename
+        for file in os.walk(working_dir_str, followlinks=True):
+            for i in range(len(file[2])):
+                found_filename = file[0] + os.sep + file[2][i]
+                if found_filename[-3:] == ".py":
+                    create_graph(found_filename)
+
+    for file in py_files:
+        logger[file] = EdgeDetector(file, args.built_ins)
+        logger[file].visit(tree[file])
+        graph = {**graph, **logger[file].get_graph()}
 
     # Outputs the graph parsed from the AST in string form.
     indent = ""
@@ -234,7 +260,6 @@ def main():
     for node in graph:
         format_string = "%" + indent + "s %" + indent + "s"
         print(format_string % (node, node.get_edges_str(dependencies=args.inverse)))
-    pass
 
 
 # Calls the main function to start the script.
