@@ -194,9 +194,9 @@ def main():
     # Configures the command-line interface.
     parser = argparse.ArgumentParser(description='Graph interfunctional Python dependencies. Searches given modules and'
                                                  'lists included functions along with their dependents.')
-    parser.add_argument('--filename', '-f', metavar='F', type=str, nargs=1,
+    parser.add_argument('--filename', '-f', metavar='F', type=str, nargs="*",
                         help="Specify the name of the file to examine. Only one file or directory at once.")
-    parser.add_argument('--directory', '-d', metavar='D', type=str, nargs=1,
+    parser.add_argument('--directory', '-d', metavar='D', type=str, nargs="*",
                         help="Specify the directory to examine. Only one file or directory at once.")
     parser.add_argument('--inverse', '-i', action='store_true', default=False,
                         help="Inverse output so that dependencies are listed instead of dependents.")
@@ -208,13 +208,8 @@ def main():
 
     # Processes the input parameters.
     single_file = True
-    if args.directory:
-        filename = args.directory[0]
-        single_file = False
-    elif args.filename:
-        filename = args.filename[0]
-    else:
-        filename = input("Filename to examine: ")
+    if args.directory is None and args.filename is None:
+        args.filename[0] = input("Filename to examine: ")
 
     tree = {}
     creator = {}
@@ -222,23 +217,25 @@ def main():
     graph = {}
     logger = {}
 
-    if single_file is True:
-        # Adds ".py" to the end of the file if that was not specified.
-        if filename[-3:] != ".py":
-            filename += ".py"
+    if args.filename is not None:
+        for file in args.filename:
+            # Adds ".py" to the end of the file if that was not specified.
+            if file[-3:] != ".py":
+                file += ".py"
 
-        file_dir = filename.split(os.sep)
-        working_dir_str = sys.path[0] + os.sep
-        for directory in file_dir[:-1]:
-            working_dir_str += directory
-        create_graph(filename)
-    else:
-        working_dir_str = sys.path[0] + os.sep + filename
-        for file in os.walk(working_dir_str, followlinks=True):
-            for i in range(len(file[2])):
-                found_filename = file[0] + os.sep + file[2][i]
-                if found_filename[-3:] == ".py":
-                    create_graph(found_filename)
+            file_dir = file.split(os.sep)
+            working_dir_str = sys.path[0] + os.sep
+            for directory in file_dir[:-1]:
+                working_dir_str += directory
+            create_graph(file)
+    if args.directory is not None:
+        for directory in args.directory:
+            working_dir_str = sys.path[0] + os.sep + directory
+            for file in os.walk(working_dir_str, followlinks=True):
+                for i in range(len(file[2])):
+                    found_filename = file[0] + os.sep + file[2][i]
+                    if found_filename[-3:] == ".py":
+                        create_graph(found_filename)
 
     for file in py_files:
         logger[file] = EdgeDetector(file, args.built_ins)
@@ -248,7 +245,14 @@ def main():
     # Outputs the graph parsed from the AST in string form.
     indent = ""
     if args.raw is not True:
-        print("Mapper searched " + filename)
+        searched_str = ""
+        if args.filename is not None:
+            for file in args.filename:
+                searched_str += file + " "
+        if args.directory is not None:
+            for directory in args.directory:
+                searched_str += directory + " "
+        print("Mapper searched: " + searched_str)
         print()
         if args.inverse is True:
             dependents_string = "Dependencies"
