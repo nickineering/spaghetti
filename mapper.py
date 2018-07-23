@@ -185,15 +185,15 @@ class EdgeDetector(ASTParser):
 def main():
 
     def create_graph(found_filename):
-        py_files.append(found_filename)
         tree[found_filename] = ast.parse(open(found_filename).read())
         creator[found_filename] = NodeCreator(found_filename)
         creator[found_filename].visit(tree[found_filename])
+        py_files.append(found_filename)
         return {**graph, **creator[found_filename].get_graph()}
 
     # Configures the command-line interface.
     parser = argparse.ArgumentParser(description='Graph interfunctional Python dependencies. Searches given modules and'
-                                                 'lists included functions along with their dependents.')
+                                                 ' lists included functions along with their dependents.')
     parser.add_argument('--filename', '-f', metavar='F', type=str, nargs="*",
                         help="Specify the name of the file to examine. Only one file or directory at once.")
     parser.add_argument('--directory', '-d', metavar='D', type=str, nargs="*",
@@ -207,7 +207,6 @@ def main():
     args = parser.parse_args()
 
     # Processes the input parameters.
-    single_file = True
     if args.directory is None and args.filename is None:
         args.filename[0] = input("Filename to examine: ")
 
@@ -216,26 +215,37 @@ def main():
     py_files = []
     graph = {}
     logger = {}
+    searched_files = []
+    searched_directories = []
 
     if args.filename is not None:
         for file in args.filename:
-            # Adds ".py" to the end of the file if that was not specified.
-            if file[-3:] != ".py":
-                file += ".py"
+            try:
+                # Adds ".py" to the end of the file if that was not specified.
+                if file[-3:] != ".py":
+                    file += ".py"
 
-            file_dir = file.split(os.sep)
-            working_dir_str = sys.path[0] + os.sep
-            for directory in file_dir[:-1]:
-                working_dir_str += directory
-            create_graph(file)
+                file_dir = file.split(os.sep)
+                working_dir_str = sys.path[0] + os.sep
+                for directory in file_dir[:-1]:
+                    working_dir_str += directory
+                graph = {**graph, **create_graph(file)}
+                searched_files.append(file)
+            except FileNotFoundError:
+                print("Error: File %s was not found" % file)
+
     if args.directory is not None:
         for directory in args.directory:
             working_dir_str = sys.path[0] + os.sep + directory
-            for file in os.walk(working_dir_str, followlinks=True):
-                for i in range(len(file[2])):
-                    found_filename = file[0] + os.sep + file[2][i]
-                    if found_filename[-3:] == ".py":
-                        create_graph(found_filename)
+            if os.path.isdir(working_dir_str):
+                searched_directories.append(directory)
+                for file in os.walk(working_dir_str, followlinks=True):
+                    for i in range(len(file[2])):
+                        found_filename = file[0] + os.sep + file[2][i]
+                        if found_filename[-3:] == ".py":
+                            graph = {**graph, **create_graph(found_filename)}
+            else:
+                print("Error: Directory %s was not found" % directory)
 
     for file in py_files:
         logger[file] = EdgeDetector(file, args.built_ins)
@@ -246,21 +256,24 @@ def main():
     indent = ""
     if args.raw is not True:
         searched_str = ""
-        if args.filename is not None:
-            for file in args.filename:
+        if searched_files is not []:
+            for file in searched_files:
                 searched_str += file + " "
-        if args.directory is not None:
-            for directory in args.directory:
+        if searched_directories is not []:
+            for directory in searched_directories:
                 searched_str += directory + " "
-        print("Mapper searched: " + searched_str)
-        print()
-        if args.inverse is True:
-            dependents_string = "Dependencies"
-        else:
-            dependents_string = "Dependents"
-        print("%-20s %-20s" % ("Function Name", dependents_string))
-        print()
-        indent = "-20"
+
+        if searched_str != "":
+            print("Mapper searched: " + searched_str)
+            print()
+            if args.inverse is True:
+                dependents_string = "Dependencies"
+            else:
+                dependents_string = "Dependents"
+            print("%-20s %-20s" % ("Function Name", dependents_string))
+            print()
+            indent = "-20"
+
     for node in graph:
         format_string = "%" + indent + "s %" + indent + "s"
         print(format_string % (node, node.get_edges_str(dependencies=args.inverse)))
