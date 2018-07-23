@@ -39,6 +39,12 @@ class FuncNode:
     def get_class(self):
         return self._class_name
 
+    def is_identifier(self, identifier):
+        if self._filename == identifier or self._class_name == identifier:
+            return True
+        else:
+            return False
+
     def get_name(self):
         return self._name
 
@@ -122,14 +128,13 @@ class EdgeDetector(ASTParser):
 
         # There should be a more efficient way to do this, but basically it is trying to determine enough information
         # about the node being called to generate that node's hash so the two can be linked.
-        try:
+
+        if "value" in dir(node.func):
+            dependency = node.func.attr
+            home = node.func.value.id
+        else:
             dependency = node.func.id
-        except AttributeError:
-            try:
-                dependency = node.func.attr
-                # class_name = node.func.value.id
-            except AttributeError:
-                dependency = node.func.value.id
+            home = self.current_filename
 
         # Checks if the current call is to a built-in function.
         is_built_in = False
@@ -142,11 +147,15 @@ class EdgeDetector(ASTParser):
                 # Searches the graph for a node that resembles the called node. Might not work if multiple nodes are
                 # named the same or if the node is not in the graph.
                 if n.get_name() == dependency:
-                    dependency_node = n
                     if already_found is True:
-                        print("Mapper could not definitively determine the instance of " + dependency
+                        if n.is_identifier(home) is True and dependency_node.is_identifier(home) is False:
+                            dependency_node = n
+                        if n.is_identifier(home) is False and dependency_node.is_identifier(home) is False:
+                            print("Mapper could not definitively determine the instance of " + dependency
                               + " that was called by " +
                               self.current_function)
+                    else:
+                        dependency_node = n
                     already_found = True
 
                 if n.get_ast_node() == node:
