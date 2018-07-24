@@ -216,29 +216,28 @@ class EdgeDetector(ASTParser):
 # Gets input data
 def get_input():
     # Configures the command-line interface.
-    parser = argparse.ArgumentParser(description='Graph interfunctional Python dependencies. Searches given modules and'
-                                                 ' lists included functions along with their dependents.')
-    parser.add_argument('--filename', '-f', metavar='F', type=str, nargs="*",
-                        help="Specify the name of the file to examine. Only one file or directory at once.")
-    parser.add_argument('--directory', '-d', metavar='D', type=str, nargs="*",
-                        help="Specify the directory to examine. Only one file or directory at once.")
+    parser = argparse.ArgumentParser(description='Graph interfunctional Python dependencies. Searches given modules '
+                                                 'and/or directories and lists included functions along with their '
+                                                 'dependents.')
+    parser.add_argument('filename', metavar='F', type=str, nargs="*",
+                        help="the name(s) of files and directories to examine")
     parser.add_argument('--inverse', '-i', action='store_true', default=False,
-                        help="Inverse output so that dependencies are listed instead of dependents.")
+                        help="inverse output so that dependencies are listed instead of dependents")
     parser.add_argument('--built-ins', '-b', action='store_true',
-                        help="Also graph when Python's built in functions are used.")
+                        help="also graph when Python's built in functions are used")
     parser.add_argument('--raw', '-r', action='store_true', default=False,
-                        help="Remove instruction text and formatting.")
+                        help="remove instruction text and formatting")
     args = parser.parse_args()
 
     # Processes the input parameters.
-    if args.directory is None and args.filename is None:
+    if args.filename is None:
         args.filename[0] = input("Filename to examine: ")
 
     return args
 
 
 # Adds to the existing graph object.
-def create_graph(found_filename):
+def append_graph(found_filename):
     tree[found_filename] = ast.parse(open(found_filename).read())
     creator[found_filename] = NodeCreator(found_filename)
     creator[found_filename].visit(tree[found_filename])
@@ -280,33 +279,23 @@ def main():
     args = get_input()
 
     if args.filename is not None:
-        for file in args.filename:
-            try:
-                # Adds ".py" to the end of the file if that was not specified.
-                if file[-3:] != ".py":
-                    file += ".py"
-
-                file_dir = file.split(os.sep)
-                working_dir_str = sys.path[0] + os.sep
-                for directory in file_dir[:-1]:
-                    working_dir_str += directory
-                graph = {**graph, **create_graph(file)}
-                searched_files.append(file)
-            except FileNotFoundError:
-                print("Error: File %s was not found" % file)
-
-    if args.directory is not None:
-        for directory in args.directory:
-            working_dir_str = sys.path[0] + os.sep + directory
-            if os.path.isdir(working_dir_str):
-                searched_directories.append(directory)
-                for file in os.walk(working_dir_str, followlinks=True):
+        for filename in args.filename:
+            if os.path.isdir(filename):
+                searched_directories.append(filename)
+                for file in os.walk(filename, followlinks=True):
                     for i in range(len(file[2])):
                         found_filename = file[0] + os.sep + file[2][i]
                         if found_filename[-3:] == ".py":
-                            graph = {**graph, **create_graph(found_filename)}
+                            graph = append_graph(found_filename)
             else:
-                print("Error: Directory %s was not found" % directory)
+                # Adds ".py" to the end of the file if that was not specified.
+                if filename[-3:] != ".py":
+                    filename += ".py"
+                if os.path.isfile(filename):
+                    searched_files.append(filename)
+                    graph = append_graph(filename)
+                else:
+                    print("Error: File %s was not found" % filename)
 
     # Processes each file.
     for file in py_files:
