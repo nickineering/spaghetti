@@ -3,6 +3,14 @@ import argparse
 import os
 import sys
 
+tree = {}
+creator = {}
+py_files = []
+graph = {}
+logger = {}
+searched_files = []
+searched_directories = []
+
 
 # Represents function nodes in the graph.
 class FuncNode:
@@ -39,6 +47,7 @@ class FuncNode:
     def get_class(self):
         return self._class_name
 
+    # Returns true if identifier might be used by the AST to identify the node.
     def is_identifier(self, identifier):
         if self._filename == identifier or self._class_name == identifier:
             return True
@@ -60,8 +69,9 @@ class FuncNode:
     def get_dependents(self):
         return self._dependents
 
-    def get_edges_str(self, dependencies=False):
-        if dependencies is True:
+    # Returns a string of all the edges.
+    def get_edges_str(self, inverse=False):
+        if inverse is True:
             edges = self._dependencies
         else:
             edges = self._dependents
@@ -126,9 +136,8 @@ class EdgeDetector(ASTParser):
     # Records actual function calls
     def visit_Call(self, node):
 
-        # There should be a more efficient way to do this, but basically it is trying to determine enough information
-        # about the node being called to generate that node's hash so the two can be linked.
-
+        # Checks for information to reconstruct the fully qualified name of the node. Not enough data is in the AST
+        # to always be able to find the right node.
         if "value" in dir(node.func):
             dependency = node.func.attr
             home = node.func.value.id
@@ -140,37 +149,30 @@ class EdgeDetector(ASTParser):
         is_built_in = False
         if dependency in dir(__builtins__):  # sys.builtin_module_names
             is_built_in = True
+
         if is_built_in is False or self.allow_built_ins is True:
             dependency_node = None
             already_found = False
+            # Searches the graph and selects the node being referenced.
             for n in self.graph:
-                # Searches the graph for a node that resembles the called node. Might not work if multiple nodes are
-                # named the same or if the node is not in the graph.
                 if n.get_name() == dependency:
                     if already_found is True:
+                        # If there is a conflict and this is a more exact match save this.
                         if n.is_identifier(home) is True and dependency_node.is_identifier(home) is False:
                             dependency_node = n
-                        if n.is_identifier(home) is False and dependency_node.is_identifier(home) is False:
-                            print("Mapper could not definitively determine the instance of " + dependency
-                              + " that was called by " +
-                              self.current_function)
+                        # Do nothing if existing node is better.
+                        if n.is_identifier(home) is False and dependency_node.is_identifier(home) is True:
+                            pass
+                        # If neither or both match throw an error. This should not happen normally.
+                        else:
+                            print("Mapper could not definitively determine the instance of " + dependency +
+                                  " that was called by " + self.current_function)
                     else:
                         dependency_node = n
                     already_found = True
 
                 if n.get_ast_node() == node:
                     this_node = n
-
-            # This ideally would never be called. It only exists because the author is presently unaware of a
-            # definitive way to determine the identity of a function called in an AST node.
-            if dependency_node is None:
-                if is_built_in is True:
-                    class_name = "Builtins"
-                    dependency_file = "System"
-                else:
-                    class_name = "Unknown"
-                    dependency_file = "Unknown"
-                dependency_node = FuncNode(filename=dependency_file, class_name=class_name, name=dependency)
 
             # Creates this node if it was not already in the graph.
             try:
@@ -179,27 +181,33 @@ class EdgeDetector(ASTParser):
                 this_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
                                      name=self.current_function, ast_node=node)
 
-            # Ensures that the relevant nodes are in the graph if they were not already.
-            self.add_node(this_node)
-            self.add_node(dependency_node)
-
-            # This works even if the node was not added to the graph because the existing node's hash would be the same.
-            self.graph[this_node].add_dependency(dependency_node)
-            self.graph[dependency_node].add_dependent(this_node)
+            self.add_edge(is_built_in, dependency, this_node, dependency_node,)
 
         self.generic_visit(node)
 
+    # Adds an edge to the graph.
+    def add_edge(self, is_built_in, dependency, this_node, dependency_node=None,):
+        # Error handling if the node's identity could not be determined.
+        if dependency_node is None:
+            if is_built_in is True:
+                class_name = "Builtins"
+                dependency_file = "System"
+            else:
+                class_name = "Unknown"
+                dependency_file = "Unknown"
+            dependency_node = FuncNode(filename=dependency_file, class_name=class_name, name=dependency)
 
-# Main initial execution of the script via the command-line.
-def main():
+        # Ensures that the relevant nodes are in the graph if they were not already.
+        self.add_node(this_node)
+        self.add_node(dependency_node)
 
-    def create_graph(found_filename):
-        tree[found_filename] = ast.parse(open(found_filename).read())
-        creator[found_filename] = NodeCreator(found_filename)
-        creator[found_filename].visit(tree[found_filename])
-        py_files.append(found_filename)
-        return {**graph, **creator[found_filename].get_graph()}
+        # This works even if the node was not added to the graph because the existing node's hash would be the same.
+        self.graph[this_node].add_dependency(dependency_node)
+        self.graph[dependency_node].add_dependent(this_node)
 
+
+# Gets input data
+def get_input():
     # Configures the command-line interface.
     parser = argparse.ArgumentParser(description='Graph interfunctional Python dependencies. Searches given modules and'
                                                  ' lists included functions along with their dependents.')
@@ -219,13 +227,49 @@ def main():
     if args.directory is None and args.filename is None:
         args.filename[0] = input("Filename to examine: ")
 
-    tree = {}
-    creator = {}
-    py_files = []
-    graph = {}
-    logger = {}
-    searched_files = []
-    searched_directories = []
+    return args
+
+
+# Adds to the existing graph object.
+def create_graph(found_filename):
+    tree[found_filename] = ast.parse(open(found_filename).read())
+    creator[found_filename] = NodeCreator(found_filename)
+    creator[found_filename].visit(tree[found_filename])
+    py_files.append(found_filename)
+    return {**graph, **creator[found_filename].get_graph()}
+
+
+# Prints the results including a list of functions and their dependencies in the terminal.
+def output_text(args):
+    indent = ""
+    if args.raw is not True:
+        searched_str = ""
+        if searched_files is not []:
+            for file in searched_files:
+                searched_str += file + " "
+        if searched_directories is not []:
+            for directory in searched_directories:
+                searched_str += directory + " "
+
+        if searched_str != "":
+            print("Mapper searched: %s\n" % searched_str)
+            if args.inverse is True:
+                dependents_string = "Dependencies"
+            else:
+                dependents_string = "Dependents"
+            print("%-20s %-20s\n" % ("Function Name", dependents_string))
+            indent = "-20"
+
+    # Prints each line of the data.
+    for node in graph:
+        format_string = "%" + indent + "s %" + indent + "s"
+        print(format_string % (node, node.get_edges_str(inverse=args.inverse)))
+
+
+# Main initial execution of the script via the command-line.
+def main():
+    global graph
+    args = get_input()
 
     if args.filename is not None:
         for file in args.filename:
@@ -256,36 +300,13 @@ def main():
             else:
                 print("Error: Directory %s was not found" % directory)
 
+    # Processes each file.
     for file in py_files:
         logger[file] = EdgeDetector(file, args.built_ins)
         logger[file].visit(tree[file])
         graph = {**graph, **logger[file].get_graph()}
 
-    # Outputs the graph parsed from the AST in string form.
-    indent = ""
-    if args.raw is not True:
-        searched_str = ""
-        if searched_files is not []:
-            for file in searched_files:
-                searched_str += file + " "
-        if searched_directories is not []:
-            for directory in searched_directories:
-                searched_str += directory + " "
-
-        if searched_str != "":
-            print("Mapper searched: " + searched_str)
-            print()
-            if args.inverse is True:
-                dependents_string = "Dependencies"
-            else:
-                dependents_string = "Dependents"
-            print("%-20s %-20s" % ("Function Name", dependents_string))
-            print()
-            indent = "-20"
-
-    for node in graph:
-        format_string = "%" + indent + "s %" + indent + "s"
-        print(format_string % (node, node.get_edges_str(dependencies=args.inverse)))
+    output_text(args)
 
 
 # Calls the main function to start the script.
