@@ -41,6 +41,9 @@ class FuncNode:
     def __hash__(self):
         return hash((self._filename, self._class_name, self._name))
 
+    def get_string(self):
+        return self.get_filename() + self.get_class() + self.get_name()
+
     def get_filename(self):
         return self._filename
 
@@ -76,7 +79,7 @@ class FuncNode:
         else:
             edges = self._dependents
         return_str = ""
-        for edge in edges:
+        for edge in sorted(edges, key=lambda the_node: the_node.get_string()):
             return_str += "(" + repr(edge) + ")"
         return return_str
 
@@ -261,11 +264,12 @@ def output_text(args):
                 dependents_string = "Dependencies"
             else:
                 dependents_string = "Dependents"
-            print("%-20s %-20s\n" % ("Function Name", dependents_string))
-            indent = "-20"
+            indent = "-30"
+            title_str = "%" + indent + "s %" + indent + "s\n"
+            print(title_str % ("Function Name", dependents_string))
 
     # Prints each line of the data.
-    for node in graph:
+    for node in sorted(graph, key=lambda the_node: the_node.get_string()):
         format_string = "%" + indent + "s %" + indent + "s"
         print(format_string % (node, node.get_edges_str(inverse=args.inverse)))
 
