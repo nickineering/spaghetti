@@ -1,7 +1,6 @@
 import ast
 import argparse
 import os
-import sys
 
 tree = {}
 creator = {}
@@ -103,13 +102,17 @@ class ASTParser(ast.NodeVisitor):
         self.current_filename = self.current_filename.split(os.sep)[-1]
 
     def visit_ClassDef(self, node):
+        last_class = self.current_class
         self.current_class = node.name
         self.generic_visit(node)
+        self.current_class = last_class
 
     # Creates a node for the function even though it might not be connected to any other nodes.
     def visit_FunctionDef(self, node):
+        last_function = self.current_function
         self.current_function = node.name
         self.generic_visit(node)
+        self.current_function = last_function
 
     # Returns the graph this instance created.
     def get_graph(self):
@@ -126,9 +129,9 @@ class NodeCreator(ASTParser):
 
     # Creates a node for the function even though it might not be connected to any other nodes.
     def visit_FunctionDef(self, node):
-        self.current_function = node.name
+        current_function = node.name
         current_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
-                                name=self.current_function, ast_node=node)
+                                name=current_function, ast_node=node)
         self.add_node(current_node)
         self.generic_visit(node)
 
@@ -185,6 +188,8 @@ class EdgeDetector(ASTParser):
             try:
                 this_node
             except NameError:
+                if self.current_function == "":
+                    self.current_function = "__main__"
                 this_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
                                      name=self.current_function, ast_node=node)
 
@@ -309,3 +314,4 @@ def main():
 # Calls the main function to start the script.
 if __name__ == "__main__":
     main()
+

@@ -1,4 +1,4 @@
-from testers import tester2
+import tester2
 
 
 def function1():
@@ -15,8 +15,8 @@ def function2():
 def function3():
     recursive_function(5)
     print("function3")
-    t2Class = tester2.T2Class()
-    t2Class.t2method2()
+    t2_class = tester2.T2Class()
+    t2_class.t2method2()
 
 
 def function4():
@@ -25,7 +25,7 @@ def function4():
     outer_function()
 
 
-def recursive_function (remaining):
+def recursive_function(remaining):
     print("recursive_function " + remaining + " remaining")
     if remaining > 0:
         recursive_function(remaining-1)
@@ -38,6 +38,7 @@ def outer_function():
         print("inner_function")
         function2()
 
+    print("outer_function after inner_function declaration")
     inner_function()
 
 
@@ -45,7 +46,7 @@ def lambda_example(n):
     return lambda x: x + n
 
 
-class TestClass():
+class TestClass:
 
     def __init__(self):
         print("__init__")
@@ -64,3 +65,7 @@ class TestClass():
 
     def method4(self):
         print("method4")
+
+
+if __name__ == "__main__":
+    outer_function()
