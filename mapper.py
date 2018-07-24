@@ -135,12 +135,16 @@ class EdgeDetector(ASTParser):
 
     # Records actual function calls
     def visit_Call(self, node):
+        # print(ast.dump(node))
 
         # Checks for information to reconstruct the fully qualified name of the node. Not enough data is in the AST
         # to always be able to find the right node.
         if "value" in dir(node.func):
             dependency = node.func.attr
-            home = node.func.value.id
+            try:
+                home = node.func.value.id
+            except AttributeError:
+                home = self.current_class
         else:
             dependency = node.func.id
             home = self.current_filename
