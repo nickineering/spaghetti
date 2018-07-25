@@ -13,8 +13,8 @@ def function2():
 
 
 def function3():
-    recursive_function(5)
     print("function3")
+    recursive_function(5)
     t2_class = tester2.T2Class()
     t2_class.t2method2()
 
@@ -26,8 +26,8 @@ def function4():
 
 
 def recursive_function(remaining):
-    print("recursive_function " + remaining + " remaining")
-    if remaining > 0:
+    print("recursive_function " + repr(remaining) + " remaining")
+    if int(remaining) > 0:
         recursive_function(remaining-1)
 
 
@@ -69,3 +69,4 @@ class TestClass:
 
 if __name__ == "__main__":
     outer_function()
+    function3()

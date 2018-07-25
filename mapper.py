@@ -88,11 +88,11 @@ class FuncNode:
 
 # Parent class for basic AST parsing. Meant to be extended depending on the task.
 class ASTParser(ast.NodeVisitor):
-    current_class = ""
-    current_function = ""
     graph = {}
 
     def __init__(self, filename="", built_ins=False):
+        self.current_class = ""
+        self.current_function = ""
         self.filename = filename
         self.allow_built_ins = built_ins
 
@@ -102,17 +102,16 @@ class ASTParser(ast.NodeVisitor):
         self.current_filename = self.current_filename.split(os.sep)[-1]
 
     def visit_ClassDef(self, node):
-        last_class = self.current_class
-        self.current_class = node.name
-        self.generic_visit(node)
-        self.current_class = last_class
+        self.handle_node(node, "current_class", self.generic_visit)
 
-    # Creates a node for the function even though it might not be connected to any other nodes.
     def visit_FunctionDef(self, node):
-        last_function = self.current_function
-        self.current_function = node.name
-        self.generic_visit(node)
-        self.current_function = last_function
+        self.handle_node(node, "current_function", self.generic_visit)
+
+    def handle_node(self, node, title, handler):
+        old_title = self.__dict__[title]
+        self.__dict__[title] = node.name
+        handler(node)
+        self.__dict__[title] = old_title
 
     # Returns the graph this instance created.
     def get_graph(self):
@@ -127,11 +126,22 @@ class ASTParser(ast.NodeVisitor):
 # Searches AST for nodes and adds them to the graph.
 class NodeCreator(ASTParser):
 
-    # Creates a node for the function even though it might not be connected to any other nodes.
-    def visit_FunctionDef(self, node):
-        current_function = node.name
+    def visit_ClassDef(self, node):
+        self.handle_node(node, "current_class", self.add_class_node)
+
+    def add_class_node(self, node):
         current_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
-                                name=current_function, ast_node=node)
+                                name="__init__")
+        self.add_node(current_node)
+        self.generic_visit(node)
+
+    def visit_FunctionDef(self, node):
+        self.handle_node(node, "current_function", self.add_function_node)
+
+    # Creates a node for the function even though it might not be connected to any other nodes.
+    def add_function_node(self, node):
+        current_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
+                                name=self.current_function, ast_node=node)
         self.add_node(current_node)
         self.generic_visit(node)
 
@@ -190,6 +200,7 @@ class EdgeDetector(ASTParser):
             except NameError:
                 if self.current_function == "":
                     self.current_function = "__main__"
+
                 this_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
                                      name=self.current_function, ast_node=node)
 
@@ -314,4 +325,3 @@ def main():
 # Calls the main function to start the script.
 if __name__ == "__main__":
     main()
-
