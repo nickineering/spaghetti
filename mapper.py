@@ -51,7 +51,7 @@ class FuncNode:
 
     # Returns true if identifier might be used by the AST to identify the node.
     def is_identifier(self, identifier):
-        if self._filename == identifier or self._class_name == identifier:
+        if self._filename == identifier or self._class_name == identifier or self._filename == identifier:
             return True
         else:
             return False
@@ -175,7 +175,7 @@ class EdgeDetector(ASTParser):
             already_found = False
             # Searches the graph and selects the node being referenced.
             for n in self.graph:
-                if n.get_name() == dependency:
+                if n.get_name() == dependency or (n.get_name() == "__init__" and n.get_class() == dependency):
                     if already_found is True:
                         # If there is a conflict and this is a more exact match save this.
                         if n.is_identifier(home) is True and dependency_node.is_identifier(home) is False:
