@@ -1,6 +1,7 @@
 import ast
 import argparse
 import os
+import importlib
 
 tree = {}
 creator = {}
@@ -26,7 +27,7 @@ class FuncNode:
         self._ast_node = ast_node
 
     def __repr__(self):
-        return self._class_name + "." + self._name
+        return self._filename + ":" + self._class_name + "." + self._name
 
     def __eq__(self, other):
         return (
@@ -79,7 +80,7 @@ class FuncNode:
             edges = self._dependents
         return_str = ""
         for edge in sorted(edges, key=lambda the_node: the_node.get_string()):
-            return_str += "(" + repr(edge) + ")"
+            return_str += "(" + repr(edge) + ") "
         return return_str
 
     def get_ast_node(self):
@@ -97,9 +98,15 @@ class ASTParser(ast.NodeVisitor):
         self.allow_built_ins = built_ins
 
         # Removes file extension.
-        self.current_filename = self.filename[:-3]
+        # self.current_filename = self.filename[:-3]
+        self.current_filename = self.filename
         # Removes directory for simplicity. Should be included in future versions.
         self.current_filename = self.current_filename.split(os.sep)[-1]
+        self.directory = ""
+        for x in self.filename.split(os.sep)[:-1]:
+            self.directory += x + os.sep
+        self.directory = self.directory.replace(os.getcwd() + os.sep, "")
+        # self.full_directory = os.getcwd() + os.sep + self.directory
 
     def visit_ClassDef(self, node):
         self.handle_node(node, "current_class", self.generic_visit)
@@ -125,6 +132,23 @@ class ASTParser(ast.NodeVisitor):
 
 # Searches AST for nodes and adds them to the graph.
 class NodeCreator(ASTParser):
+    imports = []
+
+    def visit_Import(self, node):
+        # print(ast.dump(node))
+        for reference in node.names:
+            imported_name = (self.directory + reference.name).replace(os.sep, ".")
+            self.imports.append(imported_name)
+            imported = importlib.import_module(imported_name)
+            # relative_imported = imported.__file__.replace(os.getcwd() + os.sep, "")
+            tree_file = open(imported.__file__)
+            tree = ast.parse(tree_file.read())
+            print(imported.__file__)
+            visitor = NodeCreator(imported.__file__, built_ins=True)
+            visitor.visit(tree)
+
+    def get_imports(self):
+        return self.imports
 
     def visit_ClassDef(self, node):
         self.handle_node(node, "current_class", self.add_class_node)
@@ -255,6 +279,7 @@ def get_input():
 # Adds to the existing graph object.
 def append_graph(found_filename):
     tree[found_filename] = ast.parse(open(found_filename).read())
+    print(found_filename)
     creator[found_filename] = NodeCreator(found_filename)
     creator[found_filename].visit(tree[found_filename])
     py_files.append(found_filename)
@@ -279,7 +304,7 @@ def output_text(args):
                 dependents_string = "Dependencies"
             else:
                 dependents_string = "Dependents"
-            indent = "-30"
+            indent = "-40"
             title_str = "%" + indent + "s %" + indent + "s\n"
             print(title_str % ("Function Name", dependents_string))
 
@@ -296,6 +321,7 @@ def main():
 
     if args.filename is not None:
         for filename in args.filename:
+            filename = os.getcwd() + os.sep + filename
             if os.path.isdir(filename):
                 searched_directories.append(filename)
                 for file in os.walk(filename, followlinks=True):
@@ -311,7 +337,7 @@ def main():
                     searched_files.append(filename)
                     graph = append_graph(filename)
                 else:
-                    print("Error: File %s was not found" % filename)
+                    print("Error: Could not find %s" % filename)
 
     # Processes each file.
     for file in py_files:

@@ -20,5 +20,14 @@ class T2Class:
         print("T2method2")
 
 
+class T2SubClass(T2Class):
+
+    def __init__(self):
+        print("T2SubClass.__init__")
+
+    def t2sub1(self):
+        print("t2sub1")
+
+
 if __name__ == "__main__":
     print("tester2")

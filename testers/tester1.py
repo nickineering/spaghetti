@@ -1,4 +1,5 @@
 import tester2
+from tester2 import T2SubClass
 
 
 def function1():
@@ -70,3 +71,6 @@ class TestClass:
 if __name__ == "__main__":
     outer_function()
     function3()
+    sub = T2SubClass()
+    sub.t2sub1()
+    sub.t2method1()
