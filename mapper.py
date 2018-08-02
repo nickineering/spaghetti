@@ -8,8 +8,9 @@ creator = {}
 py_files = []
 graph = {}
 logger = {}
-searched_files = []
-searched_directories = []
+searched_files = set()
+searched_directories = set()
+crawled_imports = set()
 
 
 # Represents function nodes in the graph.
@@ -98,11 +99,15 @@ class FuncNode:
 class ASTParser(ast.NodeVisitor):
     graph = {}
 
-    def __init__(self, filename="", built_ins=False, recursive=False):
+    def __init__(self, filename="", built_ins=False, recursive=False, imports=None):
         self.current_class = ""
         self.current_function = ""
         self.filename = filename
         self.allow_built_ins = built_ins
+        if imports is None:
+            self.imports = set()
+        else:
+            self.imports = imports
 
         # Removes file extension.
         # self.current_filename = self.filename[:-3]
@@ -141,21 +146,20 @@ class ASTParser(ast.NodeVisitor):
 
 # Searches AST for nodes and adds them to the graph.
 class NodeCreator(ASTParser):
-    imports = []
 
     def visit_Import(self, node):
         # print(ast.dump(node))
         if self.recursive is False:
             for reference in node.names:
-                if reference.name not in self.imports:
-                    imported_name = (self.directory + reference.name).replace(os.sep, ".")
-                    imported = importlib.import_module(imported_name)
-                    self.imports.append(imported_name)
-                    # relative_imported = imported.__file__.replace(os.getcwd() + os.sep, "")
-                    visitor = NodeCreator(imported.__file__, built_ins=True, recursive=True)
-                    tree_file = open(imported.__file__)
-                    tree = ast.parse(tree_file.read())
-                    visitor.visit(tree)
+                imported_name = (self.directory + reference.name).replace(os.sep, ".")
+                # if imported_name not in self.imports:
+                imported = importlib.import_module(imported_name)
+                self.imports.add(imported_name)
+                # relative_imported = imported.__file__.replace(os.getcwd() + os.sep, "")
+                visitor = NodeCreator(imported.__file__, built_ins=True, recursive=True)
+                tree_file = open(imported.__file__)
+                tree = ast.parse(tree_file.read())
+                visitor.visit(tree)
 
     def get_imports(self):
         return self.imports
@@ -288,9 +292,11 @@ def get_input():
 
 # Adds to the existing graph object.
 def append_graph(found_filename):
+    global crawled_imports
     tree[found_filename] = ast.parse(open(found_filename).read())
-    creator[found_filename] = NodeCreator(found_filename)
+    creator[found_filename] = NodeCreator(found_filename, imports=crawled_imports)
     creator[found_filename].visit(tree[found_filename])
+    crawled_imports.union(creator[found_filename].get_imports())
     py_files.append(found_filename)
     return {**graph, **creator[found_filename].get_graph()}
 
@@ -299,22 +305,21 @@ def append_graph(found_filename):
 def output_text(args):
     indent = ""
     if args.raw is not True:
-        searched_str = ""
-        if searched_files is not []:
-            for file in searched_files:
-                searched_str += file + " "
-        if searched_directories is not []:
-            for directory in searched_directories:
-                searched_str += directory + " "
+        searched_str = " ".join(searched_files) + " ".join(searched_directories)
 
         if searched_str != "":
-            print("Mapper searched: %s\n" % searched_str)
+            print("Mapper searched: %s" % searched_str)
+
+            if crawled_imports is not []:
+                imports_str = " ".join(crawled_imports)
+                print("Mapper also crawled imports from: %s" % imports_str)
+
             if args.inverse is True:
                 dependents_string = "Dependencies"
             else:
                 dependents_string = "Dependents"
             indent = "-40"
-            title_str = "%" + indent + "s %" + indent + "s\n"
+            title_str = "\n%" + indent + "s %" + indent + "s\n"
             print(title_str % ("Function Name", dependents_string))
 
     # Prints each line of the data.
@@ -333,7 +338,7 @@ def main():
         for filename in args.filename:
             filename = os.getcwd() + os.sep + filename
             if os.path.isdir(filename):
-                searched_directories.append(filename)
+                searched_directories.add(filename + os.sep)
                 for file in os.walk(filename, followlinks=True):
                     for i in range(len(file[2])):
                         found_filename = file[0] + os.sep + file[2][i]
@@ -344,7 +349,7 @@ def main():
                 if filename[-3:] != ".py":
                     filename += ".py"
                 if os.path.isfile(filename):
-                    searched_files.append(filename)
+                    searched_files.add(filename)
                     graph = append_graph(filename)
                 else:
                     print("Error: Could not find %s" % filename)
