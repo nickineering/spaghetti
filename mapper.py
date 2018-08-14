@@ -16,11 +16,11 @@ crawled_imports = set()
 # Represents function nodes in the graph.
 class FuncNode:
 
-    def __init__(self, filename="", class_name="", name="", background=False, ast_node=None):
+    def __init__(self, filename="", class_name="", name="", hidden=False, ast_node=None):
         self._filename = filename
         self._class_name = class_name
         self._name = name
-        self._background = background
+        self._hidden = hidden
 
         # All of the other nodes this node calls.
         self._dependencies = set()
@@ -62,11 +62,14 @@ class FuncNode:
     def get_name(self):
         return self._name
 
-    def is_background(self):
-        if self._background is True and len(self._dependencies) == 0 and len(self._dependents) == 0:
+    def is_hidden(self):
+        if self._hidden is True and len(self._dependencies) == 0 and len(self._dependents) == 0:
             return True
         else:
             return False
+
+    def is_secondary(self):
+        return self._hidden
 
     def add_dependency(self, dependency):
         self._dependencies.add(dependency)
@@ -93,6 +96,12 @@ class FuncNode:
 
     def get_ast_node(self):
         return self._ast_node
+
+    def get_indegree(self):
+        return len(self._dependents)
+
+    def get_outdegree(self):
+        return len(self._dependencies)
 
 
 # Parent class for basic AST parsing. Meant to be extended depending on the task.
@@ -169,7 +178,7 @@ class NodeCreator(ASTParser):
 
     def add_class_node(self, node):
         current_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
-                                name="__init__", background=self.recursive)
+                                name="__init__", hidden=self.recursive)
         self.add_node(current_node)
         self.generic_visit(node)
 
@@ -179,7 +188,7 @@ class NodeCreator(ASTParser):
     # Creates a node for the function even though it might not be connected to any other nodes.
     def add_function_node(self, node):
         current_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
-                                name=self.current_function, background=self.recursive, ast_node=node)
+                                name=self.current_function, hidden=self.recursive, ast_node=node)
         self.add_node(current_node)
         self.generic_visit(node)
 
@@ -281,6 +290,10 @@ def get_input():
                         help="also graph when Python's built in functions are used")
     parser.add_argument('--raw', '-r', action='store_true', default=False,
                         help="remove instruction text and formatting")
+    parser.add_argument('--connectivity', '-c', action='store_true', default=False,
+                        help="print connectivity data")
+    parser.add_argument('--no-refresh', '-n', action='store_true', default=False,
+                        help="Exit after initial data print")
     args = parser.parse_args()
 
     # Processes the input parameters.
@@ -304,15 +317,35 @@ def append_graph(found_filename):
 # Prints the results including a list of functions and their dependencies in the terminal.
 def output_text(args):
     indent = ""
+
     if args.raw is not True:
         searched_str = " ".join(searched_files) + " ".join(searched_directories)
 
         if searched_str != "":
             print("Mapper searched: %s" % searched_str)
 
-            if crawled_imports is not []:
+            if len(crawled_imports) is not 0:
                 imports_str = " ".join(crawled_imports)
                 print("Mapper also crawled imports from: %s" % imports_str)
+
+            total_degrees = 0
+            total_nodes = 0
+            max_degree = 0
+            if args.connectivity is True:
+                for node in graph:
+                    if not node.is_secondary():
+                        degree = 0
+                        if args.inverse is True:
+                            degree += node.get_outdegree()
+                        else:
+                            degree += node.get_indegree()
+                        if max_degree < degree:
+                            max_degree = degree
+                        total_degrees += degree
+                        total_nodes += 1
+                average_degree = total_degrees / total_nodes
+                print('Average Degree: {0:.2f}'.format(average_degree))
+                print('Max Degree: ' + repr(max_degree))
 
             if args.inverse is True:
                 dependents_string = "Dependencies"
@@ -325,7 +358,7 @@ def output_text(args):
     # Prints each line of the data.
     format_string = "%" + indent + "s %" + indent + "s"
     for node in sorted(graph, key=lambda the_node: the_node.get_string()):
-        if node.is_background() is False:
+        if node.is_hidden() is False:
             print(format_string % (node, node.get_edges_str(inverse=args.inverse)))
 
 
