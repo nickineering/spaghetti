@@ -332,9 +332,11 @@ def output_text(args):
             total_nodes = 0
             max_degree = 0
             if args.connectivity is True:
+                searched_nodes = set()
                 for node in graph:
                     if not node.is_secondary():
-                        degree = 0
+                        if node not in searched_nodes:
+                            degree = 0
                         if args.inverse is True:
                             degree += node.get_outdegree()
                         else:
