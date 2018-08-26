@@ -74,23 +74,19 @@ class FuncNode:
     def add_dependency(self, dependency):
         self._dependencies.add(dependency)
 
-    def get_dependencies(self):
-        return self._dependencies
-
     def add_dependent(self, dependent):
         self._dependents.add(dependent)
 
-    def get_dependents(self):
-        return self._dependents
+    def get_edges(self, inverse=False):
+        if inverse is True:
+            return self._dependencies
+        else:
+            return self._dependents
 
     # Returns a string of all the edges.
     def get_edges_str(self, inverse=False):
-        if inverse is True:
-            edges = self._dependencies
-        else:
-            edges = self._dependents
         return_str = ""
-        for edge in sorted(edges, key=lambda the_node: the_node.get_string()):
+        for edge in sorted(self.get_edges(inverse), key=lambda the_node: the_node.get_string()):
             return_str += "(" + repr(edge) + ") "
         return return_str
 
@@ -349,6 +345,14 @@ def output_text(args):
                 print('Average Degree: {0:.2f}'.format(average_degree))
                 print('Max Degree: ' + repr(max_degree))
 
+                connectivity = {}
+                for origin in graph:
+                    connectivity[origin] = {}
+                    for destination in graph:
+                        connectivity[origin][destination] = get_connectivity(origin, destination, args.inverse)
+                        print(origin.get_name() + " to " + destination.get_name() + " paths: " +
+                              repr(connectivity[origin][destination]))
+
             if args.inverse is True:
                 dependents_string = "Dependencies"
             else:
@@ -362,6 +366,20 @@ def output_text(args):
     for node in sorted(graph, key=lambda the_node: the_node.get_string()):
         if node.is_hidden() is False:
             print(format_string % (node, node.get_edges_str(inverse=args.inverse)))
+
+
+def get_connectivity(node, destination, inverse, searched=[]):
+    paths = 0
+    queue = []
+    for edge in node.get_edges(inverse):
+        if edge == destination:
+            paths += 1
+        elif edge not in searched:
+            searched.append(edge)
+            queue.append(edge)
+    for edge in queue:
+        paths += get_connectivity(edge, destination, inverse, searched)
+    return paths
 
 
 # Main initial execution of the script via the command-line.
