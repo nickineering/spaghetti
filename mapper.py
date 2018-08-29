@@ -310,9 +310,60 @@ def append_graph(found_filename):
     return {**graph, **creator[found_filename].get_graph()}
 
 
+def get_connectivity(inverse):
+    total_degrees = 0
+    total_nodes = 0
+    return_data = {'max_degree': 0}
+
+    connectivity = {}
+    connectivity_total = {}
+    for origin in graph:
+        if not origin.is_secondary():
+            degree = 0
+            if inverse is True:
+                degree += origin.get_outdegree()
+            else:
+                degree += origin.get_indegree()
+            if return_data['max_degree'] < degree:
+                return_data['max_degree'] = degree
+            total_degrees += degree
+            total_nodes += 1
+
+        connectivity[origin] = {}
+        connectivity_total[origin] = 0
+        for destination in graph:
+            connectivity[origin][destination] = get_node_connectivity(origin, destination, inverse)
+            connectivity_total[origin] += connectivity[origin][destination]
+            # print(origin.get_name() + " to " + destination.get_name() + " paths: " +
+            #       repr(connectivity[origin][destination]))
+
+    try:
+        return_data['average_degree'] = total_degrees / total_nodes
+    except ZeroDivisionError:
+        return_data['average_degree'] = 0
+    return_data['totals'] = connectivity_total
+    return return_data
+
+
+def get_node_connectivity(node, destination, inverse, searched=set()):
+    paths = 0
+    queue = set()
+    searched.add(node)
+    for edge in node.get_edges(inverse):
+        if edge == destination:
+            paths += 1
+        elif edge not in searched:
+            searched.add(edge)
+            queue.add(edge)
+    for edge in queue:
+        paths += get_node_connectivity(edge, destination, inverse, searched)
+    return paths
+
+
 # Prints the results including a list of functions and their dependencies in the terminal.
 def output_text(args):
     indent = ""
+    connectivity = get_connectivity(args.inverse)
 
     if args.raw is not True:
         searched_str = " ".join(searched_files) + " ".join(searched_directories)
@@ -324,62 +375,24 @@ def output_text(args):
                 imports_str = " ".join(crawled_imports)
                 print("Mapper also crawled imports from: %s" % imports_str)
 
-            total_degrees = 0
-            total_nodes = 0
-            max_degree = 0
-            if args.connectivity is True:
-                searched_nodes = set()
-                for node in graph:
-                    if not node.is_secondary():
-                        if node not in searched_nodes:
-                            degree = 0
-                        if args.inverse is True:
-                            degree += node.get_outdegree()
-                        else:
-                            degree += node.get_indegree()
-                        if max_degree < degree:
-                            max_degree = degree
-                        total_degrees += degree
-                        total_nodes += 1
-                average_degree = total_degrees / total_nodes
-                print('Average Degree: {0:.2f}'.format(average_degree))
-                print('Max Degree: ' + repr(max_degree))
-
-                connectivity = {}
-                for origin in graph:
-                    connectivity[origin] = {}
-                    for destination in graph:
-                        connectivity[origin][destination] = get_connectivity(origin, destination, args.inverse)
-                        print(origin.get_name() + " to " + destination.get_name() + " paths: " +
-                              repr(connectivity[origin][destination]))
-
+            connectivity_string = ""
+            # if args.connectivity is True:
+            connectivity_string += "Connectivity"
+            print('Average Degree: {0:.2f}'.format(connectivity['average_degree']))
+            print('Max Degree: ' + repr(connectivity['max_degree']))
             if args.inverse is True:
                 dependents_string = "Dependencies"
             else:
                 dependents_string = "Dependents"
             indent = "-40"
-            title_str = "\n%" + indent + "s %" + indent + "s\n"
-            print(title_str % ("Function Name", dependents_string))
+            title_str = "\n%" + indent + "s %" + indent + "s %" + indent + "s\n"
+            print(title_str % ("Function Name", connectivity_string, dependents_string))
 
     # Prints each line of the data.
-    format_string = "%" + indent + "s %" + indent + "s"
+    format_string = "%" + indent + "s %" + indent + "s %" + indent + "s"
     for node in sorted(graph, key=lambda the_node: the_node.get_string()):
         if node.is_hidden() is False:
-            print(format_string % (node, node.get_edges_str(inverse=args.inverse)))
-
-
-def get_connectivity(node, destination, inverse, searched=[]):
-    paths = 0
-    queue = []
-    for edge in node.get_edges(inverse):
-        if edge == destination:
-            paths += 1
-        elif edge not in searched:
-            searched.append(edge)
-            queue.append(edge)
-    for edge in queue:
-        paths += get_connectivity(edge, destination, inverse, searched)
-    return paths
+            print(format_string % (node, connectivity['totals'][node], node.get_edges_str(inverse=args.inverse)))
 
 
 # Main initial execution of the script via the command-line.
@@ -389,7 +402,7 @@ def main():
 
     if args.filename is not None:
         for filename in args.filename:
-            filename = os.getcwd() + os.sep + filename
+            filename = os.path.abspath(filename)
             if os.path.isdir(filename):
                 searched_directories.add(filename + os.sep)
                 for file in os.walk(filename, followlinks=True):
