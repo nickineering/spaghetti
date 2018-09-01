@@ -2,6 +2,8 @@ import ast
 import argparse
 import os
 import importlib
+import networkx as nx
+import statistics
 
 tree = {}
 creator = {}
@@ -310,60 +312,33 @@ def append_graph(found_filename):
     return {**graph, **creator[found_filename].get_graph()}
 
 
-def get_connectivity(inverse):
-    total_degrees = 0
-    total_nodes = 0
-    return_data = {'max_degree': 0}
+def get_nx_graph(graph):
+    nxg = nx.DiGraph()
+    for node in graph:
+        nxg.add_node(node)
+    for node in graph:
+        for edge in node.get_edges():
+            nxg.add_edge(node, edge)
+    return nxg
 
+
+def get_connectivity():
     connectivity = {}
-    connectivity_total = {}
-    for origin in graph:
-        if not origin.is_secondary():
-            degree = 0
-            if inverse is True:
-                degree += origin.get_outdegree()
-            else:
-                degree += origin.get_indegree()
-            if return_data['max_degree'] < degree:
-                return_data['max_degree'] = degree
-            total_degrees += degree
-            total_nodes += 1
+    nxg = get_nx_graph(graph)
 
-        connectivity[origin] = {}
-        connectivity_total[origin] = 0
-        for destination in graph:
-            connectivity[origin][destination] = get_node_connectivity(origin, destination, inverse)
-            connectivity_total[origin] += connectivity[origin][destination]
-            # print(origin.get_name() + " to " + destination.get_name() + " paths: " +
-            #       repr(connectivity[origin][destination]))
-
-    try:
-        return_data['average_degree'] = total_degrees / total_nodes
-    except ZeroDivisionError:
-        return_data['average_degree'] = 0
-    return_data['totals'] = connectivity_total
-    return return_data
-
-
-def get_node_connectivity(node, destination, inverse, searched=set()):
-    paths = 0
-    queue = set()
-    searched.add(node)
-    for edge in node.get_edges(inverse):
-        if edge == destination:
-            paths += 1
-        elif edge not in searched:
-            searched.add(edge)
-            queue.add(edge)
-    for edge in queue:
-        paths += get_node_connectivity(edge, destination, inverse, searched)
-    return paths
+    degree_sequence = sorted([d for n, d in nxg.degree()], reverse=True)
+    print(max(degree_sequence))
+    print(statistics.mean(degree_sequence))
 
 
 # Prints the results including a list of functions and their dependencies in the terminal.
 def output_text(args):
     indent = ""
-    connectivity = get_connectivity(args.inverse)
+    nxg = get_nx_graph(graph)
+
+    degree_sequence = sorted([d for n, d in nxg.degree()], reverse=True)
+    max_degree = max(degree_sequence)
+    mean_degree = statistics.mean(degree_sequence)
 
     if args.raw is not True:
         searched_str = " ".join(searched_files) + " ".join(searched_directories)
@@ -375,24 +350,22 @@ def output_text(args):
                 imports_str = " ".join(crawled_imports)
                 print("Mapper also crawled imports from: %s" % imports_str)
 
-            connectivity_string = ""
             # if args.connectivity is True:
-            connectivity_string += "Connectivity"
-            print('Average Degree: {0:.2f}'.format(connectivity['average_degree']))
-            print('Max Degree: ' + repr(connectivity['max_degree']))
+            print('Average Degree: {0:.2f}'.format(mean_degree))
+            print('Max Degree: ' + repr(max_degree))
             if args.inverse is True:
                 dependents_string = "Dependencies"
             else:
                 dependents_string = "Dependents"
             indent = "-40"
-            title_str = "\n%" + indent + "s %" + indent + "s %" + indent + "s\n"
-            print(title_str % ("Function Name", connectivity_string, dependents_string))
+            title_str = "\n%" + indent + "s %" + indent + "s\n"
+            print(title_str % ("Function Name", dependents_string))
 
     # Prints each line of the data.
-    format_string = "%" + indent + "s %" + indent + "s %" + indent + "s"
+    format_string = "%" + indent + "s %" + indent + "s"
     for node in sorted(graph, key=lambda the_node: the_node.get_string()):
         if node.is_hidden() is False:
-            print(format_string % (node, connectivity['totals'][node], node.get_edges_str(inverse=args.inverse)))
+            print(format_string % (node, node.get_edges_str(inverse=args.inverse)))
 
 
 # Main initial execution of the script via the command-line.
