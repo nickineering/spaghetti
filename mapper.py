@@ -159,15 +159,30 @@ class NodeCreator(ASTParser):
         # print(ast.dump(node))
         if self.recursive is False:
             for reference in node.names:
-                imported_name = (self.directory + reference.name).replace(os.sep, ".")
-                # if imported_name not in self.imports:
-                imported = importlib.import_module(imported_name)
-                self.imports.add(imported_name)
-                # relative_imported = imported.__file__.replace(os.getcwd() + os.sep, "")
-                visitor = NodeCreator(imported.__file__, built_ins=True, recursive=True)
-                tree_file = open(imported.__file__)
-                tree = ast.parse(tree_file.read())
-                visitor.visit(tree)
+                folders = self.directory.split(os.sep)
+                self.crawl_import(node, reference, folders)
+
+    def crawl_import(self, node, reference, folders, folder_index=0):
+        try:
+            folder = ""
+            x = len(folders) - folder_index
+            while x < len(folders) - 1:
+                folder += folders[x] + "."
+                x += 1
+            imported_name = folder + reference.name
+            # if imported_name not in self.imports:
+            imported = importlib.import_module(imported_name)
+            # relative_imported = imported.__file__.replace(os.getcwd() + os.sep, "")
+            visitor = NodeCreator(imported.__file__, built_ins=True, recursive=True)
+            tree_file = open(imported.__file__)
+            tree = ast.parse(tree_file.read())
+            self.imports.add(imported_name)
+            visitor.visit(tree)
+        except ImportError:
+            if folder_index < len(folders):
+                self.crawl_import(node, reference, folders, folder_index+1)
+            else:
+                print("Could not crawl import of " + reference.name + " in " + self.directory)
 
     def get_imports(self):
         return self.imports
@@ -343,7 +358,8 @@ def output_text(args):
                 max_degree = max(degree_sequence)
                 mean_degree = statistics.mean(degree_sequence)
                 all_pairs_con = nx.algorithms.approximation.connectivity.all_pairs_node_connectivity(nxg)
-                average_connectivity = nx.algorithms.connectivity.connectivity.average_node_connectivity(nxg)
+                # Very slow
+                # average_connectivity = nx.algorithms.connectivity.connectivity.average_node_connectivity(nxg)
                 edge_connectivity = nx.algorithms.connectivity.connectivity.edge_connectivity(nxg)
                 is_connected = nx.is_connected(nxg.to_undirected())
                 node_num = nxg.number_of_nodes()
@@ -359,7 +375,7 @@ def output_text(args):
 
                 print('Average Degree: {0:.2f}'.format(mean_degree))
                 print('Max Degree: ' + repr(max_degree))
-                print('Average Connectivity: {0:.2f}'.format(average_connectivity))
+                # print('Average Connectivity: {0:.2f}'.format(average_connectivity))
                 print('Edge Connectivity: {0:.2f}'.format(edge_connectivity))
                 print('Is connected: ' + repr(is_connected))
                 print('Number of nodes: ' + repr(node_num))
