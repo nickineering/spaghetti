@@ -392,7 +392,7 @@ def main():
 
     if args.filename is not None:
         for filename in args.filename:
-            filename = os.path.abspath(filename)
+            filename = os.path.abspath(os.path.expanduser(filename))
             if os.path.isdir(filename):
                 searched_directories.add(filename + os.sep)
                 for file in os.walk(filename, followlinks=True):
