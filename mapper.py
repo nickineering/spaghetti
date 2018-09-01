@@ -4,6 +4,7 @@ import os
 import importlib
 import networkx as nx
 import statistics
+from networkx.algorithms import approximation
 
 tree = {}
 creator = {}
@@ -322,23 +323,9 @@ def get_nx_graph(graph):
     return nxg
 
 
-def get_connectivity():
-    connectivity = {}
-    nxg = get_nx_graph(graph)
-
-    degree_sequence = sorted([d for n, d in nxg.degree()], reverse=True)
-    print(max(degree_sequence))
-    print(statistics.mean(degree_sequence))
-
-
 # Prints the results including a list of functions and their dependencies in the terminal.
 def output_text(args):
     indent = ""
-    nxg = get_nx_graph(graph)
-
-    degree_sequence = sorted([d for n, d in nxg.degree()], reverse=True)
-    max_degree = max(degree_sequence)
-    mean_degree = statistics.mean(degree_sequence)
 
     if args.raw is not True:
         searched_str = " ".join(searched_files) + " ".join(searched_directories)
@@ -350,9 +337,39 @@ def output_text(args):
                 imports_str = " ".join(crawled_imports)
                 print("Mapper also crawled imports from: %s" % imports_str)
 
-            # if args.connectivity is True:
-            print('Average Degree: {0:.2f}'.format(mean_degree))
-            print('Max Degree: ' + repr(max_degree))
+            if args.connectivity is True:
+                nxg = get_nx_graph(graph)
+                degree_sequence = sorted([d for n, d in nxg.degree()], reverse=True)
+                max_degree = max(degree_sequence)
+                mean_degree = statistics.mean(degree_sequence)
+                all_pairs_con = nx.algorithms.approximation.connectivity.all_pairs_node_connectivity(nxg)
+                average_connectivity = nx.algorithms.connectivity.connectivity.average_node_connectivity(nxg)
+                edge_connectivity = nx.algorithms.connectivity.connectivity.edge_connectivity(nxg)
+                is_connected = nx.is_connected(nxg.to_undirected())
+                node_num = nxg.number_of_nodes()
+                maximal_independent_set = nx.algorithms.mis.maximal_independent_set(nxg.to_undirected())
+                degree_centrality = nx.algorithms.centrality.degree_centrality(nxg)
+                edge_load_centrality = nx.algorithms.centrality.edge_load_centrality(nxg)
+                global_reaching_centrality = nx.algorithms.centrality.global_reaching_centrality(nxg)
+                degree_histogram = nx.classes.function.degree_histogram(nxg)
+                density = nx.classes.function.density(nxg)
+                if is_connected:
+                    minimum_edge_cut = nx.algorithms.connectivity.cuts.minimum_edge_cut(nxg)
+                    print('Minimum edge cut: ' + repr(minimum_edge_cut))
+
+                print('Average Degree: {0:.2f}'.format(mean_degree))
+                print('Max Degree: ' + repr(max_degree))
+                print('Average Connectivity: {0:.2f}'.format(average_connectivity))
+                print('Edge Connectivity: {0:.2f}'.format(edge_connectivity))
+                print('Is connected: ' + repr(is_connected))
+                print('Number of nodes: ' + repr(node_num))
+                # print('Maximal independent set: ' + repr(maximal_independent_set))
+                # print('Degree Centrality: ' + repr(degree_centrality))
+                # print('Edge Load Centrality: ' + repr(edge_load_centrality))
+                print('Global reaching centrality: ' + repr(global_reaching_centrality))
+                print('Degree Histogram: ' + repr(degree_histogram))
+                print('Density: ' + repr(density))
+
             if args.inverse is True:
                 dependents_string = "Dependencies"
             else:
