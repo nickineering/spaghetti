@@ -13,15 +13,17 @@ class Search:
         self.args = None
         self.tree = {}
         self.creator = {}
-        self.py_files = []
+        self.files = []
         self.graph = {}
-        self.logger = {}
         self.searched_files = set()
         self.searched_directories = set()
         self.crawled_imports = set()
         self.uncrawled = set()
 
         self.get_input()
+        self.crawl_files()
+        self.process_files()
+        self.output_text()
 
     # Gets input data
     def get_input(self):
@@ -41,14 +43,124 @@ class Search:
         parser.add_argument('--connectivity', '-c', action='store_true', default=False,
                             help="print connectivity data")
         parser.add_argument('--no-refresh', '-n', action='store_true', default=False,
-                            help="Exit after initial data print")
+                            help="exit after initial data print")
         args = parser.parse_args()
 
         # Processes the input parameters.
-        if args.filename is None:
-            args.filename[0] = input("Filename to examine: ")
+        if len(args.filename) == 0:
+            args.filename.append(input("Filename to examine: "))
 
         self.args = args
+
+    def crawl_files(self):
+        for filename in self.args.filename:
+            filename = os.path.abspath(os.path.expanduser(filename))
+            if os.path.isdir(filename):
+                self.searched_directories.add(filename + os.sep)
+                for file in os.walk(filename, followlinks=True):
+                    for i in range(len(file[2])):
+                        found_filename = file[0] + os.sep + file[2][i]
+                        if found_filename[-3:] == ".py":
+                            self.append_graph(found_filename)
+            else:
+                # Adds ".py" to the end of the file if that was not specified.
+                if filename[-3:] != ".py":
+                    filename += ".py"
+                if os.path.isfile(filename):
+                    self.searched_files.add(filename)
+                    self.append_graph(filename)
+                else:
+                    print("Error: Could not find %s" % filename)
+
+    # Adds to the existing graph object.
+    def append_graph(self, file):
+        self.tree[file] = ast.parse(open(file).read())
+        creator = NodeCreator(search=self, filename=file, imports=self.crawled_imports)
+        creator.visit(self.tree[file])
+        self.crawled_imports.union(creator.get_imports())
+        self.uncrawled.union(creator.get_uncrawled())
+        self.files.append(file)
+
+    def process_files(self):
+        # Processes each file.
+        for file in self.files:
+            logger = EdgeDetector(search=self, filename=file)
+            logger.visit(self.tree[file])
+
+    # Prints the results including a list of functions and their dependencies in the terminal.
+    def output_text(self):
+        indent = ""
+
+        if self.args.raw is not True:
+            searched_str = " ".join(self.searched_files) + " ".join(self.searched_directories)
+
+            if searched_str != "":
+                print("Mapper searched: %s" % searched_str)
+
+                if len(self.crawled_imports) is not 0:
+                    imports_str = " ".join(sorted(self.crawled_imports))
+                    print("Mapper also crawled imports from: %s" % imports_str)
+
+                if len(self.uncrawled) is not 0:
+                    uncrawled_str = " ".join(sorted(self.uncrawled))
+                    print("Mapper could not crawl the following imports: %s" % uncrawled_str)
+
+                if self.args.connectivity is True:
+                    nxg = self.get_nx_graph()
+                    degree_sequence = sorted([d for n, d in nxg.degree()], reverse=True)
+                    max_degree = max(degree_sequence)
+                    mean_degree = statistics.mean(degree_sequence)
+                    all_pairs_con = nx.algorithms.approximation.connectivity.all_pairs_node_connectivity(nxg)
+                    # Very slow
+                    # average_connectivity = nx.algorithms.connectivity.connectivity.average_node_connectivity(nxg)
+                    edge_connectivity = nx.algorithms.connectivity.connectivity.edge_connectivity(nxg)
+                    is_connected = nx.is_connected(nxg.to_undirected())
+                    node_num = nxg.number_of_nodes()
+                    maximal_independent_set = nx.algorithms.mis.maximal_independent_set(nxg.to_undirected())
+                    degree_centrality = nx.algorithms.centrality.degree_centrality(nxg)
+                    edge_load_centrality = nx.algorithms.centrality.edge_load_centrality(nxg)
+                    global_reaching_centrality = nx.algorithms.centrality.global_reaching_centrality(nxg)
+                    degree_histogram = nx.classes.function.degree_histogram(nxg)
+                    density = nx.classes.function.density(nxg)
+                    if is_connected:
+                        minimum_edge_cut = nx.algorithms.connectivity.cuts.minimum_edge_cut(nxg)
+                        print('Minimum edge cut: ' + repr(minimum_edge_cut))
+
+                    print('Average Degree: {0:.2f}'.format(mean_degree))
+                    print('Max Degree: ' + repr(max_degree))
+                    # print('Average Connectivity: {0:.2f}'.format(average_connectivity))
+                    print('Edge Connectivity: {0:.2f}'.format(edge_connectivity))
+                    print('Is connected: ' + repr(is_connected))
+                    print('Number of nodes: ' + repr(node_num))
+                    # print('Maximal independent set: ' + repr(maximal_independent_set))
+                    # print('Degree Centrality: ' + repr(degree_centrality))
+                    # print('Edge Load Centrality: ' + repr(edge_load_centrality))
+                    print('Global reaching centrality: ' + repr(global_reaching_centrality))
+                    print('Degree Histogram: ' + repr(degree_histogram))
+                    print('Density: ' + repr(density))
+
+                if self.args.inverse is True:
+                    dependents_string = "Dependencies"
+                else:
+                    dependents_string = "Dependents"
+                indent = "-40"
+                title_str = "\n%" + indent + "s %" + indent + "s\n"
+                print(title_str % ("Function Name", dependents_string))
+
+        # Prints each line of the data.
+        format_string = "%" + indent + "s %" + indent + "s"
+        for node in sorted(self.graph, key=lambda the_node: the_node.get_string()):
+            if node.is_hidden() is False:
+                print(format_string % (node, node.get_edges_str(inverse=self.args.inverse)))
+
+    def get_nx_graph(self):
+        nxg = nx.DiGraph()
+        for node in self.graph:
+            nxg.add_node(node)
+        for node in self.graph:
+            for edge in node.get_edges():
+                nxg.add_edge(node, edge)
+        return nxg
 
 
 # Represents function nodes in the graph.
@@ -142,11 +254,11 @@ class FuncNode:
 class ASTParser(ast.NodeVisitor):
     graph = {}
 
-    def __init__(self, filename="", built_ins=False, recursive=False, imports=None):
+    def __init__(self, search, filename="", recursive=False, imports=None):
         self.current_class = ""
         self.current_function = ""
         self.filename = filename
-        self.allow_built_ins = built_ins
+        self.search = search
         if imports is None:
             self._imports = set()
         else:
@@ -178,14 +290,10 @@ class ASTParser(ast.NodeVisitor):
         handler(node)
         self.__dict__[title] = old_title
 
-    # Returns the graph this instance created.
-    def get_graph(self):
-        return self.graph
-
     # Adds the given node to the graph if it is not already in it.
     def add_node(self, node):
         if node not in self.graph:
-            self.graph[node] = node
+            self.search.graph[node] = node
 
 
 # Searches AST for nodes and adds them to the graph.
@@ -210,7 +318,7 @@ class NodeCreator(ASTParser):
             # if imported_name not in self._imports:
             imported = importlib.import_module(imported_name)
             # relative_imported = imported.__file__.replace(os.getcwd() + os.sep, "")
-            visitor = NodeCreator(imported.__file__, built_ins=True, recursive=True)
+            visitor = NodeCreator(search=self.search, filename=imported.__file__, recursive=True)
             tree_file = open(imported.__file__)
             tree = ast.parse(tree_file.read())
             self._imports.add(imported_name)
@@ -278,11 +386,11 @@ class EdgeDetector(ASTParser):
         if dependency in dir(__builtins__):  # sys.builtin_module_names
             is_built_in = True
 
-        if is_built_in is False or self.allow_built_ins is True:
+        if is_built_in is False or self.search.args.built_ins is True:
             dependency_node = None
             already_found = False
             # Searches the graph and selects the node being referenced.
-            for n in self.graph:
+            for n in self.search.graph:
                 if n.get_name() == dependency or (n.get_name() == "__init__" and n.get_class() == dependency):
                     if already_found is True:
                         # If there is a conflict and this is a more exact match save this.
@@ -334,134 +442,11 @@ class EdgeDetector(ASTParser):
         self.add_node(dependency_node)
 
         # This works even if the node was not added to the graph because the existing node's hash would be the same.
-        self.graph[this_node].add_dependency(dependency_node)
-        self.graph[dependency_node].add_dependent(this_node)
-
-
-# Adds to the existing graph object.
-def append_graph(found_filename, search):
-    search.tree[found_filename] = ast.parse(open(found_filename).read())
-    search.creator[found_filename] = NodeCreator(found_filename, imports=search.crawled_imports)
-    search.creator[found_filename].visit(search.tree[found_filename])
-    search.crawled_imports.union(search.creator[found_filename].get_imports())
-    search.uncrawled.union(search.creator[found_filename].get_uncrawled())
-    # print(" ".join(search.uncrawled))
-    print("Len: " + repr(len(search.uncrawled)))
-    search.py_files.append(found_filename)
-    return {**search.graph, **search.creator[found_filename].get_graph()}
-
-
-def get_nx_graph(graph):
-    nxg = nx.DiGraph()
-    for node in graph:
-        nxg.add_node(node)
-    for node in graph:
-        for edge in node.get_edges():
-            nxg.add_edge(node, edge)
-    return nxg
-
-
-# Prints the results including a list of functions and their dependencies in the terminal.
-def output_text(search):
-    indent = ""
-
-    if search.args.raw is not True:
-        searched_str = " ".join(search.searched_files) + " ".join(search.searched_directories)
-
-        if searched_str != "":
-            print("Mapper searched: %s" % searched_str)
-
-            if len(search.crawled_imports) is not 0:
-                imports_str = " ".join(sorted(search.crawled_imports))
-                print("Mapper also crawled imports from: %s" % imports_str)
-
-            if len(search.uncrawled) is not 0:
-                uncrawled_str = " ".join(sorted(search.uncrawled))
-                print("Mapper could not crawl the following imports: %s" % uncrawled_str)
-
-            if search.args.connectivity is True:
-                nxg = get_nx_graph(search.graph)
-                degree_sequence = sorted([d for n, d in nxg.degree()], reverse=True)
-                max_degree = max(degree_sequence)
-                mean_degree = statistics.mean(degree_sequence)
-                all_pairs_con = nx.algorithms.approximation.connectivity.all_pairs_node_connectivity(nxg)
-                # Very slow
-                # average_connectivity = nx.algorithms.connectivity.connectivity.average_node_connectivity(nxg)
-                edge_connectivity = nx.algorithms.connectivity.connectivity.edge_connectivity(nxg)
-                is_connected = nx.is_connected(nxg.to_undirected())
-                node_num = nxg.number_of_nodes()
-                maximal_independent_set = nx.algorithms.mis.maximal_independent_set(nxg.to_undirected())
-                degree_centrality = nx.algorithms.centrality.degree_centrality(nxg)
-                edge_load_centrality = nx.algorithms.centrality.edge_load_centrality(nxg)
-                global_reaching_centrality = nx.algorithms.centrality.global_reaching_centrality(nxg)
-                degree_histogram = nx.classes.function.degree_histogram(nxg)
-                density = nx.classes.function.density(nxg)
-                if is_connected:
-                    minimum_edge_cut = nx.algorithms.connectivity.cuts.minimum_edge_cut(nxg)
-                    print('Minimum edge cut: ' + repr(minimum_edge_cut))
-
-                print('Average Degree: {0:.2f}'.format(mean_degree))
-                print('Max Degree: ' + repr(max_degree))
-                # print('Average Connectivity: {0:.2f}'.format(average_connectivity))
-                print('Edge Connectivity: {0:.2f}'.format(edge_connectivity))
-                print('Is connected: ' + repr(is_connected))
-                print('Number of nodes: ' + repr(node_num))
-                # print('Maximal independent set: ' + repr(maximal_independent_set))
-                # print('Degree Centrality: ' + repr(degree_centrality))
-                # print('Edge Load Centrality: ' + repr(edge_load_centrality))
-                print('Global reaching centrality: ' + repr(global_reaching_centrality))
-                print('Degree Histogram: ' + repr(degree_histogram))
-                print('Density: ' + repr(density))
-
-            if search.args.inverse is True:
-                dependents_string = "Dependencies"
-            else:
-                dependents_string = "Dependents"
-            indent = "-40"
-            title_str = "\n%" + indent + "s %" + indent + "s\n"
-            print(title_str % ("Function Name", dependents_string))
-
-    # Prints each line of the data.
-    format_string = "%" + indent + "s %" + indent + "s"
-    for node in sorted(search.graph, key=lambda the_node: the_node.get_string()):
-        if node.is_hidden() is False:
-            print(format_string % (node, node.get_edges_str(inverse=search.args.inverse)))
+        self.search.graph[this_node].add_dependency(dependency_node)
+        self.search.graph[dependency_node].add_dependent(this_node)
 
 
 # Main initial execution of the script via the command-line.
-def main():
-    search = Search()
-
-    if search.args.filename is not None:
-        for filename in search.args.filename:
-            filename = os.path.abspath(os.path.expanduser(filename))
-            if os.path.isdir(filename):
-                search.searched_directories.add(filename + os.sep)
-                for file in os.walk(filename, followlinks=True):
-                    for i in range(len(file[2])):
-                        found_filename = file[0] + os.sep + file[2][i]
-                        if found_filename[-3:] == ".py":
-                            search.graph = append_graph(found_filename, search)
-            else:
-                # Adds ".py" to the end of the file if that was not specified.
-                if filename[-3:] != ".py":
-                    filename += ".py"
-                if os.path.isfile(filename):
-                    search.searched_files.add(filename)
-                    search.graph = append_graph(filename, search)
-                else:
-                    print("Error: Could not find %s" % filename)
-
-    # Processes each file.
-    for file in search.py_files:
-        search.logger[file] = EdgeDetector(file, search.args.built_ins)
-        search.logger[file].visit(search.tree[file])
-        search.graph = {**search.graph, **search.logger[file].get_graph()}
-
-    output_text(search)
-
-
-# Calls the main function to start the script.
 if __name__ == "__main__":
-    main()
+    search = Search()
     print()
