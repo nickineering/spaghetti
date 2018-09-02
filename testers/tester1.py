@@ -1,5 +1,6 @@
 import tester2
 from tester2 import T2SubClass
+import non_existant_import
 
 
 def function1():

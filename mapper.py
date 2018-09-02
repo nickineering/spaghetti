@@ -19,6 +19,7 @@ class Search:
         self.searched_directories = set()
         self.crawled_imports = set()
         self.uncrawled = set()
+        self.unsure_nodes = set()
 
         self.get_input()
         self.crawl_files()
@@ -75,10 +76,8 @@ class Search:
     # Adds to the existing graph object.
     def append_graph(self, file):
         self.tree[file] = ast.parse(open(file).read())
-        creator = NodeCreator(search=self, filename=file, imports=self.crawled_imports)
+        creator = NodeCreator(search=self, filename=file)
         creator.visit(self.tree[file])
-        self.crawled_imports.union(creator.get_imports())
-        self.uncrawled.union(creator.get_uncrawled())
         self.files.append(file)
 
     def process_files(self):
@@ -98,12 +97,16 @@ class Search:
                 print("Mapper searched: %s" % searched_str)
 
                 if len(self.crawled_imports) is not 0:
-                    imports_str = " ".join(sorted(self.crawled_imports))
-                    print("Mapper also crawled imports from: %s" % imports_str)
+                    imports_str = ", ".join(sorted(self.crawled_imports))
+                    print("Also crawled: %s" % imports_str)
 
                 if len(self.uncrawled) is not 0:
-                    uncrawled_str = " ".join(sorted(self.uncrawled))
-                    print("Mapper could not crawl the following imports: %s" % uncrawled_str)
+                    uncrawled_str = ", ".join(sorted(self.uncrawled))
+                    print("Failed to crawl: %s" % uncrawled_str)
+
+                if len(self.unsure_nodes) is not 0:
+                    unsure_str = ", ".join(sorted(self.unsure_nodes))
+                    print("Ambiguous nodes: %s" % unsure_str)
 
                 if self.args.connectivity is True:
                     nxg = self.get_nx_graph()
@@ -254,15 +257,11 @@ class FuncNode:
 class ASTParser(ast.NodeVisitor):
     graph = {}
 
-    def __init__(self, search, filename="", recursive=False, imports=None):
+    def __init__(self, search, filename="", recursive=False):
         self.current_class = ""
         self.current_function = ""
         self.filename = filename
         self.search = search
-        if imports is None:
-            self._imports = set()
-        else:
-            self._imports = imports
         self._uncrawled = set()
 
         # Removes file extension.
@@ -315,27 +314,21 @@ class NodeCreator(ASTParser):
                     folder += folders[x] + "."
                 x += 1
             imported_name = folder + reference.name
-            # if imported_name not in self._imports:
+            # if imported_name not in self.search.imports:
             imported = importlib.import_module(imported_name)
             # relative_imported = imported.__file__.replace(os.getcwd() + os.sep, "")
             visitor = NodeCreator(search=self.search, filename=imported.__file__, recursive=True)
             tree_file = open(imported.__file__)
             tree = ast.parse(tree_file.read())
-            self._imports.add(imported_name)
+            self.search.crawled_imports.add(imported_name)
             visitor.visit(tree)
         except ImportError:
             if folder_index < len(folders):
                 self.crawl_import(node, reference, folders, folder_index+1)
             else:
-                self._uncrawled.add(reference.name)
+                self.search.uncrawled.add(reference.name)
         except AttributeError:
-            self._uncrawled.add(reference.name)
-
-    def get_uncrawled(self):
-        return self._uncrawled
-
-    def get_imports(self):
-        return self._imports
+            self.search.uncrawled.add(reference.name)
 
     def visit_ClassDef(self, node):
         self.handle_node(node, "current_class", self.add_class_node)
@@ -401,9 +394,8 @@ class EdgeDetector(ASTParser):
                             pass
                         # If neither or both match throw an error. This should not happen normally.
                         else:
-                            pass
-                            # print("Mapper could not definitively determine the instance of " + dependency +
-                            #       " that was called by " + self.current_function)
+                            self.search.unsure_nodes.add(self.current_filename + ":" + self.current_function + "(" +
+                                                         dependency + ")")
                     else:
                         dependency_node = n
                     already_found = True
