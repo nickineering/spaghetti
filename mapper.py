@@ -6,14 +6,49 @@ import networkx as nx
 import statistics
 from networkx.algorithms import approximation
 
-tree = {}
-creator = {}
-py_files = []
-graph = {}
-logger = {}
-searched_files = set()
-searched_directories = set()
-crawled_imports = set()
+
+class Search:
+
+    def __init__(self):
+        self.args = None
+        self.tree = {}
+        self.creator = {}
+        self.py_files = []
+        self.graph = {}
+        self.logger = {}
+        self.searched_files = set()
+        self.searched_directories = set()
+        self.crawled_imports = set()
+        self.uncrawled = set()
+
+        self.get_input()
+
+    # Gets input data
+    def get_input(self):
+        # Configures the command-line interface.
+        parser = argparse.ArgumentParser(
+            description='Graph interfunctional Python dependencies. Searches given modules '
+                        'and/or directories and lists included functions along with their '
+                        'dependents.')
+        parser.add_argument('filename', metavar='F', type=str, nargs="*",
+                            help="the name(s) of files and directories to examine")
+        parser.add_argument('--inverse', '-i', action='store_true', default=False,
+                            help="inverse output so that dependencies are listed instead of dependents")
+        parser.add_argument('--built-ins', '-b', action='store_true',
+                            help="also graph when Python's built in functions are used")
+        parser.add_argument('--raw', '-r', action='store_true', default=False,
+                            help="remove instruction text and formatting")
+        parser.add_argument('--connectivity', '-c', action='store_true', default=False,
+                            help="print connectivity data")
+        parser.add_argument('--no-refresh', '-n', action='store_true', default=False,
+                            help="Exit after initial data print")
+        args = parser.parse_args()
+
+        # Processes the input parameters.
+        if args.filename is None:
+            args.filename[0] = input("Filename to examine: ")
+
+        self.args = args
 
 
 # Represents function nodes in the graph.
@@ -113,9 +148,10 @@ class ASTParser(ast.NodeVisitor):
         self.filename = filename
         self.allow_built_ins = built_ins
         if imports is None:
-            self.imports = set()
+            self._imports = set()
         else:
-            self.imports = imports
+            self._imports = imports
+        self._uncrawled = set()
 
         # Removes file extension.
         # self.current_filename = self.filename[:-3]
@@ -167,25 +203,31 @@ class NodeCreator(ASTParser):
             folder = ""
             x = len(folders) - folder_index
             while x < len(folders) - 1:
-                folder += folders[x] + "."
+                if folders[x] != "":
+                    folder += folders[x] + "."
                 x += 1
             imported_name = folder + reference.name
-            # if imported_name not in self.imports:
+            # if imported_name not in self._imports:
             imported = importlib.import_module(imported_name)
             # relative_imported = imported.__file__.replace(os.getcwd() + os.sep, "")
             visitor = NodeCreator(imported.__file__, built_ins=True, recursive=True)
             tree_file = open(imported.__file__)
             tree = ast.parse(tree_file.read())
-            self.imports.add(imported_name)
+            self._imports.add(imported_name)
             visitor.visit(tree)
         except ImportError:
             if folder_index < len(folders):
                 self.crawl_import(node, reference, folders, folder_index+1)
             else:
-                print("Could not crawl import of " + reference.name + " in " + self.directory)
+                self._uncrawled.add(reference.name)
+        except AttributeError:
+            self._uncrawled.add(reference.name)
+
+    def get_uncrawled(self):
+        return self._uncrawled
 
     def get_imports(self):
-        return self.imports
+        return self._imports
 
     def visit_ClassDef(self, node):
         self.handle_node(node, "current_class", self.add_class_node)
@@ -223,8 +265,13 @@ class EdgeDetector(ASTParser):
             except AttributeError:
                 home = self.current_class
         else:
-            dependency = node.func.id
-            home = self.current_filename
+            try:
+                dependency = node.func.id
+                home = self.current_filename
+            except AttributeError:
+                print("big error")
+                self.generic_visit(node)
+                return
 
         # Checks if the current call is to a built-in function.
         is_built_in = False
@@ -246,8 +293,9 @@ class EdgeDetector(ASTParser):
                             pass
                         # If neither or both match throw an error. This should not happen normally.
                         else:
-                            print("Mapper could not definitively determine the instance of " + dependency +
-                                  " that was called by " + self.current_function)
+                            pass
+                            # print("Mapper could not definitively determine the instance of " + dependency +
+                            #       " that was called by " + self.current_function)
                     else:
                         dependency_node = n
                     already_found = True
@@ -290,42 +338,17 @@ class EdgeDetector(ASTParser):
         self.graph[dependency_node].add_dependent(this_node)
 
 
-# Gets input data
-def get_input():
-    # Configures the command-line interface.
-    parser = argparse.ArgumentParser(description='Graph interfunctional Python dependencies. Searches given modules '
-                                                 'and/or directories and lists included functions along with their '
-                                                 'dependents.')
-    parser.add_argument('filename', metavar='F', type=str, nargs="*",
-                        help="the name(s) of files and directories to examine")
-    parser.add_argument('--inverse', '-i', action='store_true', default=False,
-                        help="inverse output so that dependencies are listed instead of dependents")
-    parser.add_argument('--built-ins', '-b', action='store_true',
-                        help="also graph when Python's built in functions are used")
-    parser.add_argument('--raw', '-r', action='store_true', default=False,
-                        help="remove instruction text and formatting")
-    parser.add_argument('--connectivity', '-c', action='store_true', default=False,
-                        help="print connectivity data")
-    parser.add_argument('--no-refresh', '-n', action='store_true', default=False,
-                        help="Exit after initial data print")
-    args = parser.parse_args()
-
-    # Processes the input parameters.
-    if args.filename is None:
-        args.filename[0] = input("Filename to examine: ")
-
-    return args
-
-
 # Adds to the existing graph object.
-def append_graph(found_filename):
-    global crawled_imports
-    tree[found_filename] = ast.parse(open(found_filename).read())
-    creator[found_filename] = NodeCreator(found_filename, imports=crawled_imports)
-    creator[found_filename].visit(tree[found_filename])
-    crawled_imports.union(creator[found_filename].get_imports())
-    py_files.append(found_filename)
-    return {**graph, **creator[found_filename].get_graph()}
+def append_graph(found_filename, search):
+    search.tree[found_filename] = ast.parse(open(found_filename).read())
+    search.creator[found_filename] = NodeCreator(found_filename, imports=search.crawled_imports)
+    search.creator[found_filename].visit(search.tree[found_filename])
+    search.crawled_imports.union(search.creator[found_filename].get_imports())
+    search.uncrawled.union(search.creator[found_filename].get_uncrawled())
+    # print(" ".join(search.uncrawled))
+    print("Len: " + repr(len(search.uncrawled)))
+    search.py_files.append(found_filename)
+    return {**search.graph, **search.creator[found_filename].get_graph()}
 
 
 def get_nx_graph(graph):
@@ -339,21 +362,25 @@ def get_nx_graph(graph):
 
 
 # Prints the results including a list of functions and their dependencies in the terminal.
-def output_text(args):
+def output_text(search):
     indent = ""
 
-    if args.raw is not True:
-        searched_str = " ".join(searched_files) + " ".join(searched_directories)
+    if search.args.raw is not True:
+        searched_str = " ".join(search.searched_files) + " ".join(search.searched_directories)
 
         if searched_str != "":
             print("Mapper searched: %s" % searched_str)
 
-            if len(crawled_imports) is not 0:
-                imports_str = " ".join(crawled_imports)
+            if len(search.crawled_imports) is not 0:
+                imports_str = " ".join(sorted(search.crawled_imports))
                 print("Mapper also crawled imports from: %s" % imports_str)
 
-            if args.connectivity is True:
-                nxg = get_nx_graph(graph)
+            if len(search.uncrawled) is not 0:
+                uncrawled_str = " ".join(sorted(search.uncrawled))
+                print("Mapper could not crawl the following imports: %s" % uncrawled_str)
+
+            if search.args.connectivity is True:
+                nxg = get_nx_graph(search.graph)
                 degree_sequence = sorted([d for n, d in nxg.degree()], reverse=True)
                 max_degree = max(degree_sequence)
                 mean_degree = statistics.mean(degree_sequence)
@@ -386,7 +413,7 @@ def output_text(args):
                 print('Degree Histogram: ' + repr(degree_histogram))
                 print('Density: ' + repr(density))
 
-            if args.inverse is True:
+            if search.args.inverse is True:
                 dependents_string = "Dependencies"
             else:
                 dependents_string = "Dependents"
@@ -396,43 +423,42 @@ def output_text(args):
 
     # Prints each line of the data.
     format_string = "%" + indent + "s %" + indent + "s"
-    for node in sorted(graph, key=lambda the_node: the_node.get_string()):
+    for node in sorted(search.graph, key=lambda the_node: the_node.get_string()):
         if node.is_hidden() is False:
-            print(format_string % (node, node.get_edges_str(inverse=args.inverse)))
+            print(format_string % (node, node.get_edges_str(inverse=search.args.inverse)))
 
 
 # Main initial execution of the script via the command-line.
 def main():
-    global graph
-    args = get_input()
+    search = Search()
 
-    if args.filename is not None:
-        for filename in args.filename:
+    if search.args.filename is not None:
+        for filename in search.args.filename:
             filename = os.path.abspath(os.path.expanduser(filename))
             if os.path.isdir(filename):
-                searched_directories.add(filename + os.sep)
+                search.searched_directories.add(filename + os.sep)
                 for file in os.walk(filename, followlinks=True):
                     for i in range(len(file[2])):
                         found_filename = file[0] + os.sep + file[2][i]
                         if found_filename[-3:] == ".py":
-                            graph = append_graph(found_filename)
+                            search.graph = append_graph(found_filename, search)
             else:
                 # Adds ".py" to the end of the file if that was not specified.
                 if filename[-3:] != ".py":
                     filename += ".py"
                 if os.path.isfile(filename):
-                    searched_files.add(filename)
-                    graph = append_graph(filename)
+                    search.searched_files.add(filename)
+                    search.graph = append_graph(filename, search)
                 else:
                     print("Error: Could not find %s" % filename)
 
     # Processes each file.
-    for file in py_files:
-        logger[file] = EdgeDetector(file, args.built_ins)
-        logger[file].visit(tree[file])
-        graph = {**graph, **logger[file].get_graph()}
+    for file in search.py_files:
+        search.logger[file] = EdgeDetector(file, search.args.built_ins)
+        search.logger[file].visit(search.tree[file])
+        search.graph = {**search.graph, **search.logger[file].get_graph()}
 
-    output_text(args)
+    output_text(search)
 
 
 # Calls the main function to start the script.
