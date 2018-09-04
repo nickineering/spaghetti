@@ -2,7 +2,7 @@ import ast
 import argparse
 import os
 import importlib
-import networkx as nx
+import networkx
 import statistics
 from networkx.algorithms import approximation
 
@@ -113,21 +113,24 @@ class Search:
                     degree_sequence = sorted([d for n, d in nxg.degree()], reverse=True)
                     max_degree = max(degree_sequence)
                     mean_degree = statistics.mean(degree_sequence)
-                    all_pairs_con = nx.algorithms.approximation.connectivity.all_pairs_node_connectivity(nxg)
+                    all_pairs_con = networkx.algorithms.approximation.connectivity.all_pairs_node_connectivity(nxg)
                     # Very slow
-                    # average_connectivity = nx.algorithms.connectivity.connectivity.average_node_connectivity(nxg)
-                    edge_connectivity = nx.algorithms.connectivity.connectivity.edge_connectivity(nxg.to_undirected())
-                    node_connectivity = nx.algorithms.connectivity.connectivity.node_connectivity(nxg.to_undirected())
-                    is_connected = nx.is_connected(nxg.to_undirected())
+                    # average_connectivity = networkx.algorithms.connectivity.connectivity.
+                    # average_node_connectivity(nxg)
+                    edge_connectivity = networkx.algorithms.connectivity.connectivity.\
+                        edge_connectivity(nxg.to_undirected())
+                    node_connectivity = networkx.algorithms.connectivity.connectivity.\
+                        node_connectivity(nxg.to_undirected())
+                    is_connected = networkx.is_connected(nxg.to_undirected())
                     node_num = nxg.number_of_nodes()
-                    # maximal_independent_set = nx.algorithms.mis.maximal_independent_set(nxg.to_undirected())
-                    # degree_centrality = nx.algorithms.centrality.degree_centrality(nxg)
-                    # edge_load_centrality = nx.algorithms.centrality.edge_load_centrality(nxg)
-                    # global_reaching_centrality = nx.algorithms.centrality.global_reaching_centrality(nxg)
-                    degree_histogram = nx.classes.function.degree_histogram(nxg)
-                    density = nx.classes.function.density(nxg)
+                    # maximal_independent_set = networkx.algorithms.mis.maximal_independent_set(nxg.to_undirected())
+                    # degree_centrality = networkx.algorithms.centrality.degree_centrality(nxg)
+                    # edge_load_centrality = networkx.algorithms.centrality.edge_load_centrality(nxg)
+                    # global_reaching_centrality = networkx.algorithms.centrality.global_reaching_centrality(nxg)
+                    degree_histogram = networkx.classes.function.degree_histogram(nxg)
+                    density = networkx.classes.function.density(nxg)
                     if is_connected:
-                        minimum_edge_cut = nx.algorithms.connectivity.cuts.minimum_edge_cut(nxg)
+                        minimum_edge_cut = networkx.algorithms.connectivity.cuts.minimum_edge_cut(nxg)
                         print('Minimum edge cut: ' + repr(minimum_edge_cut))
 
                     print('Average Degree: {0:.2f}'.format(mean_degree))
@@ -159,13 +162,17 @@ class Search:
             if node.is_hidden() is False:
                 print(format_string % (node, node.get_edges_str(inverse=self.args.inverse)))
 
+    # Gets a networkx representation of the graph. Does not include secondary nodes so the measurement is more precise.
     def get_nx_graph(self):
-        nxg = nx.DiGraph()
+        nxg = networkx.DiGraph()
         for node in self.graph:
-            nxg.add_node(node)
+            if node.is_hidden() is False:
+                nxg.add_node(node)
         for node in self.graph:
-            for edge in node.get_edges():
-                nxg.add_edge(node, edge)
+            if node.is_hidden() is False:
+                for edge in node.get_edges():
+                    if edge.is_hidden() is False:
+                        nxg.add_edge(node, edge)
         return nxg
 
 
