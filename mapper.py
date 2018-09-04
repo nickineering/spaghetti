@@ -179,11 +179,11 @@ class Search:
 # Represents function nodes in the graph.
 class FuncNode:
 
-    def __init__(self, filename="", class_name="", name="", hidden=False, ast_node=None):
+    def __init__(self, filename="", class_name="", name="", depth=0, ast_node=None):
         self._filename = filename
         self._class_name = class_name
         self._name = name
-        self._hidden = hidden
+        self._depth = depth
 
         # All of the other nodes this node calls.
         self._dependencies = set()
@@ -226,13 +226,16 @@ class FuncNode:
         return self._name
 
     def is_hidden(self):
-        if self._hidden is True and len(self._dependencies) == 0 and len(self._dependents) == 0:
+        if self._depth > 0 and len(self._dependencies) == 0 and len(self._dependents) == 0:
             return True
         else:
             return False
 
     def is_secondary(self):
-        return self._hidden
+        if self._depth > 0:
+            return True
+        else:
+            return False
 
     def add_dependency(self, dependency):
         self._dependencies.add(dependency)
@@ -267,7 +270,7 @@ class FuncNode:
 class ASTParser(ast.NodeVisitor):
     graph = {}
 
-    def __init__(self, search, filename="", recursive=False):
+    def __init__(self, search, filename="", recursive=0):
         self.current_class = ""
         self.current_function = ""
         self.filename = filename
@@ -281,7 +284,7 @@ class ASTParser(ast.NodeVisitor):
         self.current_filename = self.current_filename.split(os.sep)[-1]
         self.directory = ""
         self.recursive = recursive
-        if self.recursive is False:
+        if self.recursive == 0:
             for x in self.filename.split(os.sep)[:-1]:
                 self.directory += x + os.sep
             self.directory = self.directory.replace(os.getcwd() + os.sep, "")
@@ -310,7 +313,7 @@ class NodeCreator(ASTParser):
 
     def visit_Import(self, node):
         # print(ast.dump(node))
-        if self.recursive is False:
+        if self.recursive < 1:
             for reference in node.names:
                 folders = self.directory.split(os.sep)
                 self.crawl_import(node, reference, folders)
@@ -327,11 +330,11 @@ class NodeCreator(ASTParser):
             # if imported_name not in self.search.imports:
             imported = importlib.import_module(imported_name)
             # relative_imported = imported.__file__.replace(os.getcwd() + os.sep, "")
-            visitor = NodeCreator(search=self.search, filename=imported.__file__, recursive=True)
+            visitor = NodeCreator(search=self.search, filename=imported.__file__, recursive=self.recursive+1)
             tree_file = open(imported.__file__)
             tree = ast.parse(tree_file.read())
-            self.search.crawled_imports.add(imported_name)
             visitor.visit(tree)
+            self.search.crawled_imports.add(imported_name)
         except ImportError:
             if folder_index < len(folders):
                 self.crawl_import(node, reference, folders, folder_index+1)
@@ -345,7 +348,7 @@ class NodeCreator(ASTParser):
 
     def add_class_node(self, node):
         current_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
-                                name="__init__", hidden=self.recursive)
+                                name="__init__", depth=self.recursive)
         self.add_node(current_node)
         self.generic_visit(node)
 
@@ -355,7 +358,7 @@ class NodeCreator(ASTParser):
     # Creates a node for the function even though it might not be connected to any other nodes.
     def add_function_node(self, node):
         current_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
-                                name=self.current_function, hidden=self.recursive, ast_node=node)
+                                name=self.current_function, depth=self.recursive, ast_node=node)
         self.add_node(current_node)
         self.generic_visit(node)
 
