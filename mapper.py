@@ -116,13 +116,14 @@ class Search:
                     all_pairs_con = nx.algorithms.approximation.connectivity.all_pairs_node_connectivity(nxg)
                     # Very slow
                     # average_connectivity = nx.algorithms.connectivity.connectivity.average_node_connectivity(nxg)
-                    edge_connectivity = nx.algorithms.connectivity.connectivity.edge_connectivity(nxg)
+                    edge_connectivity = nx.algorithms.connectivity.connectivity.edge_connectivity(nxg.to_undirected())
+                    node_connectivity = nx.algorithms.connectivity.connectivity.node_connectivity(nxg.to_undirected())
                     is_connected = nx.is_connected(nxg.to_undirected())
                     node_num = nxg.number_of_nodes()
-                    maximal_independent_set = nx.algorithms.mis.maximal_independent_set(nxg.to_undirected())
-                    degree_centrality = nx.algorithms.centrality.degree_centrality(nxg)
-                    edge_load_centrality = nx.algorithms.centrality.edge_load_centrality(nxg)
-                    global_reaching_centrality = nx.algorithms.centrality.global_reaching_centrality(nxg)
+                    # maximal_independent_set = nx.algorithms.mis.maximal_independent_set(nxg.to_undirected())
+                    # degree_centrality = nx.algorithms.centrality.degree_centrality(nxg)
+                    # edge_load_centrality = nx.algorithms.centrality.edge_load_centrality(nxg)
+                    # global_reaching_centrality = nx.algorithms.centrality.global_reaching_centrality(nxg)
                     degree_histogram = nx.classes.function.degree_histogram(nxg)
                     density = nx.classes.function.density(nxg)
                     if is_connected:
@@ -133,14 +134,16 @@ class Search:
                     print('Max Degree: ' + repr(max_degree))
                     # print('Average Connectivity: {0:.2f}'.format(average_connectivity))
                     print('Edge Connectivity: {0:.2f}'.format(edge_connectivity))
+                    print('Node Connectivity: {0:.2f}'.format(node_connectivity))
                     print('Is connected: ' + repr(is_connected))
                     print('Number of nodes: ' + repr(node_num))
                     # print('Maximal independent set: ' + repr(maximal_independent_set))
                     # print('Degree Centrality: ' + repr(degree_centrality))
                     # print('Edge Load Centrality: ' + repr(edge_load_centrality))
-                    print('Global reaching centrality: ' + repr(global_reaching_centrality))
+                    # print('Global reaching centrality: ' + repr(global_reaching_centrality))
                     print('Degree Histogram: ' + repr(degree_histogram))
                     print('Density: ' + repr(density))
+                    # print('Connectivity: ' + repr(all_pairs_con))
 
                 if self.args.inverse is True:
                     dependents_string = "Dependencies"
@@ -370,7 +373,7 @@ class EdgeDetector(ASTParser):
                 dependency = node.func.id
                 home = self.current_filename
             except AttributeError:
-                print("big error")
+                # print("big error")
                 self.generic_visit(node)
                 return
 
