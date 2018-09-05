@@ -5,6 +5,8 @@ import importlib
 import networkx
 import statistics
 from networkx.algorithms import approximation
+import matplotlib.pyplot as plt
+import time
 
 
 class Search:
@@ -15,6 +17,7 @@ class Search:
         self.creator = {}
         self.files = []
         self.graph = {}
+        self.nxg = None
         self.searched_files = set()
         self.searched_directories = set()
         self.crawled_imports = set()
@@ -25,6 +28,8 @@ class Search:
         self.crawl_files()
         self.process_files()
         self.output_text()
+        if self.args.draw is True:
+            self.draw_graph()
 
     # Gets input data
     def get_input(self):
@@ -43,6 +48,8 @@ class Search:
                             help="remove instruction text and formatting")
         parser.add_argument('--connectivity', '-c', action='store_true', default=False,
                             help="print connectivity data")
+        parser.add_argument('--draw', '-d', action='store_true', default=False,
+                            help="save to result to a .png file in new subdirectory dependency_mapping/")
         parser.add_argument('--no-refresh', '-n', action='store_true', default=False,
                             help="exit after initial data print")
         args = parser.parse_args()
@@ -85,6 +92,7 @@ class Search:
         for file in self.files:
             logger = EdgeDetector(search=self, filename=file)
             logger.visit(self.tree[file])
+        self.nxg = self.get_nx_graph()
 
     # Prints the results including a list of functions and their dependencies in the terminal.
     def output_text(self):
@@ -109,28 +117,29 @@ class Search:
                     print("Ambiguous nodes: %s" % unsure_str)
 
                 if self.args.connectivity is True:
-                    nxg = self.get_nx_graph()
-                    degree_sequence = sorted([d for n, d in nxg.degree()], reverse=True)
+                    degree_sequence = sorted([d for n, d in self.nxg.degree()], reverse=True)
                     max_degree = max(degree_sequence)
                     mean_degree = statistics.mean(degree_sequence)
-                    all_pairs_con = networkx.algorithms.approximation.connectivity.all_pairs_node_connectivity(nxg)
+                    # all_pairs_con = networkx.algorithms.approximation.connectivity.all_pairs_node_connectivity
+                    # (self.nxg)
                     # Very slow
                     # average_connectivity = networkx.algorithms.connectivity.connectivity.
-                    # average_node_connectivity(nxg)
+                    # average_node_connectivity(self.nxg)
                     edge_connectivity = networkx.algorithms.connectivity.connectivity.\
-                        edge_connectivity(nxg.to_undirected())
+                        edge_connectivity(self.nxg.to_undirected())
                     node_connectivity = networkx.algorithms.connectivity.connectivity.\
-                        node_connectivity(nxg.to_undirected())
-                    is_connected = networkx.is_connected(nxg.to_undirected())
-                    node_num = nxg.number_of_nodes()
-                    # maximal_independent_set = networkx.algorithms.mis.maximal_independent_set(nxg.to_undirected())
-                    # degree_centrality = networkx.algorithms.centrality.degree_centrality(nxg)
-                    # edge_load_centrality = networkx.algorithms.centrality.edge_load_centrality(nxg)
-                    # global_reaching_centrality = networkx.algorithms.centrality.global_reaching_centrality(nxg)
-                    degree_histogram = networkx.classes.function.degree_histogram(nxg)
-                    density = networkx.classes.function.density(nxg)
+                        node_connectivity(self.nxg.to_undirected())
+                    is_connected = networkx.is_connected(self.nxg.to_undirected())
+                    node_num = self.nxg.number_of_nodes()
+                    # maximal_independent_set = networkx.algorithms.mis.maximal_independent_set
+                    # (self.nxg.to_undirected())
+                    # degree_centrality = networkx.algorithms.centrality.degree_centrality(self.nxg)
+                    # edge_load_centrality = networkx.algorithms.centrality.edge_load_centrality(self.nxg)
+                    # global_reaching_centrality = networkx.algorithms.centrality.global_reaching_centrality(self.nxg)
+                    degree_histogram = networkx.classes.function.degree_histogram(self.nxg)
+                    density = networkx.classes.function.density(self.nxg)
                     if is_connected:
-                        minimum_edge_cut = networkx.algorithms.connectivity.cuts.minimum_edge_cut(nxg)
+                        minimum_edge_cut = networkx.algorithms.connectivity.cuts.minimum_edge_cut(self.nxg)
                         print('Minimum edge cut: ' + repr(minimum_edge_cut))
 
                     print('Average Degree: {0:.2f}'.format(mean_degree))
@@ -174,6 +183,25 @@ class Search:
                     if edge.is_hidden() is False:
                         nxg.add_edge(node, edge)
         return nxg
+
+    def draw_graph(self):
+        pos = networkx.spectral_layout(self.nxg)  # positions for all nodes
+        networkx.draw_networkx_nodes(self.nxg, pos, node_size=75)
+        networkx.draw_networkx_edges(self.nxg, pos, edge_color='blue')
+        description = networkx.draw_networkx_labels(self.nxg, pos, font_size=10, font_family='sans-serif',
+                                                    font_weight='bold')
+        for node, t in description.items():
+            t.set_clip_on(False)
+
+        title = " ".join(self.args.filename)
+        directory = "dependency_graphs"
+        filename = "graph_" + repr(time.time()) + ".png"
+        plt.axis('off')
+        plt.title(title)
+
+        if not os.path.isdir(directory):
+            os.mkdir(directory)
+        plt.savefig(directory + os.sep + filename)
 
 
 # Represents function nodes in the graph.
