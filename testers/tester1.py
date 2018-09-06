@@ -64,6 +64,7 @@ class TestClass:
 
     def method3(self):
         print("method3")
+        self.method1()
 
     def method4(self):
         print("method4")
@@ -75,3 +76,4 @@ if __name__ == "__main__":
     sub = T2SubClass()
     sub.t2sub1()
     sub.t2method1()
+    tc = TestClass()

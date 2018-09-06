@@ -46,7 +46,7 @@ class Search:
                             help="also graph when Python's built in functions are used")
         parser.add_argument('--raw', '-r', action='store_true', default=False,
                             help="remove instruction text and formatting")
-        parser.add_argument('--connectivity', '-c', action='store_true', default=False,
+        parser.add_argument('--metrics', '-m', action='store_true', default=False,
                             help="print connectivity data")
         parser.add_argument('--draw', '-d', action='store_true', default=False,
                             help="save to result to a .png file in new subdirectory dependency_mapping/")
@@ -116,46 +116,8 @@ class Search:
                     unsure_str = ", ".join(sorted(self.unsure_nodes))
                     print("Ambiguous nodes: %s" % unsure_str)
 
-                if self.args.connectivity is True:
-                    degree_sequence = sorted([d for n, d in self.nxg.degree()], reverse=True)
-                    max_degree = max(degree_sequence)
-                    mean_degree = statistics.mean(degree_sequence)
-                    # all_pairs_con = networkx.algorithms.approximation.connectivity.all_pairs_node_connectivity
-                    # (self.nxg)
-                    # Very slow
-                    # average_connectivity = networkx.algorithms.connectivity.connectivity.
-                    # average_node_connectivity(self.nxg)
-                    edge_connectivity = networkx.algorithms.connectivity.connectivity.\
-                        edge_connectivity(self.nxg.to_undirected())
-                    node_connectivity = networkx.algorithms.connectivity.connectivity.\
-                        node_connectivity(self.nxg.to_undirected())
-                    is_connected = networkx.is_connected(self.nxg.to_undirected())
-                    node_num = self.nxg.number_of_nodes()
-                    # maximal_independent_set = networkx.algorithms.mis.maximal_independent_set
-                    # (self.nxg.to_undirected())
-                    # degree_centrality = networkx.algorithms.centrality.degree_centrality(self.nxg)
-                    # edge_load_centrality = networkx.algorithms.centrality.edge_load_centrality(self.nxg)
-                    # global_reaching_centrality = networkx.algorithms.centrality.global_reaching_centrality(self.nxg)
-                    degree_histogram = networkx.classes.function.degree_histogram(self.nxg)
-                    density = networkx.classes.function.density(self.nxg)
-                    if is_connected:
-                        minimum_edge_cut = networkx.algorithms.connectivity.cuts.minimum_edge_cut(self.nxg)
-                        print('Minimum edge cut: ' + repr(minimum_edge_cut))
-
-                    print('Average Degree: {0:.2f}'.format(mean_degree))
-                    print('Max Degree: ' + repr(max_degree))
-                    # print('Average Connectivity: {0:.2f}'.format(average_connectivity))
-                    print('Edge Connectivity: {0:.2f}'.format(edge_connectivity))
-                    print('Node Connectivity: {0:.2f}'.format(node_connectivity))
-                    print('Is connected: ' + repr(is_connected))
-                    print('Number of nodes: ' + repr(node_num))
-                    # print('Maximal independent set: ' + repr(maximal_independent_set))
-                    # print('Degree Centrality: ' + repr(degree_centrality))
-                    # print('Edge Load Centrality: ' + repr(edge_load_centrality))
-                    # print('Global reaching centrality: ' + repr(global_reaching_centrality))
-                    print('Degree Histogram: ' + repr(degree_histogram))
-                    print('Density: ' + repr(density))
-                    # print('Connectivity: ' + repr(all_pairs_con))
+                if self.args.metrics is True:
+                    self.print_metrics_str()
 
                 if self.args.inverse is True:
                     dependents_string = "Dependencies"
@@ -175,17 +137,18 @@ class Search:
     def get_nx_graph(self):
         nxg = networkx.DiGraph()
         for node in self.graph:
-            if node.is_hidden() is False:
+            if node.is_secondary() is False:
                 nxg.add_node(node)
         for node in self.graph:
-            if node.is_hidden() is False:
+            if node.is_secondary() is False:
                 for edge in node.get_edges():
-                    if edge.is_hidden() is False:
+                    if edge.is_secondary() is False:
                         nxg.add_edge(node, edge)
         return nxg
 
     def draw_graph(self):
-        pos = networkx.spectral_layout(self.nxg)  # positions for all nodes
+        # pos = networkx.spectral_layout(self.nxg)  # positions for all nodes
+        pos = networkx.spring_layout(self.nxg, k=3)
         networkx.draw_networkx_nodes(self.nxg, pos, node_size=75)
         networkx.draw_networkx_edges(self.nxg, pos, edge_color='blue')
         description = networkx.draw_networkx_labels(self.nxg, pos, font_size=10, font_family='sans-serif',
@@ -202,6 +165,47 @@ class Search:
         if not os.path.isdir(directory):
             os.mkdir(directory)
         plt.savefig(directory + os.sep + filename)
+
+    def print_metrics_str(self):
+        degree_sequence = sorted([d for n, d in self.nxg.degree()], reverse=True)
+        max_degree = max(degree_sequence)
+        mean_degree = statistics.mean(degree_sequence)
+        # all_pairs_con = networkx.algorithms.approximation.connectivity.all_pairs_node_connectivity
+        # (self.nxg)
+        # Very slow
+        # average_connectivity = networkx.algorithms.connectivity.connectivity.
+        # average_node_connectivity(self.nxg)
+        edge_connectivity = networkx.algorithms.connectivity.connectivity. \
+            edge_connectivity(self.nxg.to_undirected())
+        node_connectivity = networkx.algorithms.connectivity.connectivity. \
+            node_connectivity(self.nxg.to_undirected())
+        is_connected = networkx.is_connected(self.nxg.to_undirected())
+        node_num = self.nxg.number_of_nodes()
+        # maximal_independent_set = networkx.algorithms.mis.maximal_independent_set
+        # (self.nxg.to_undirected())
+        # degree_centrality = networkx.algorithms.centrality.degree_centrality(self.nxg)
+        # edge_load_centrality = networkx.algorithms.centrality.edge_load_centrality(self.nxg)
+        # global_reaching_centrality = networkx.algorithms.centrality.global_reaching_centrality(self.nxg)
+        degree_histogram = networkx.classes.function.degree_histogram(self.nxg)
+        density = networkx.classes.function.density(self.nxg)
+        if is_connected:
+            minimum_edge_cut = networkx.algorithms.connectivity.cuts.minimum_edge_cut(self.nxg)
+            print('Minimum edge cut: ' + repr(minimum_edge_cut))
+
+        print('Average Degree: {0:.2f}'.format(mean_degree))
+        print('Max Degree: ' + repr(max_degree))
+        # print('Average Connectivity: {0:.2f}'.format(average_connectivity))
+        print('Edge Connectivity: {0:.2f}'.format(edge_connectivity))
+        print('Node Connectivity: {0:.2f}'.format(node_connectivity))
+        print('Is connected: ' + repr(is_connected))
+        print('Number of nodes: ' + repr(node_num))
+        # print('Maximal independent set: ' + repr(maximal_independent_set))
+        # print('Degree Centrality: ' + repr(degree_centrality))
+        # print('Edge Load Centrality: ' + repr(edge_load_centrality))
+        # print('Global reaching centrality: ' + repr(global_reaching_centrality))
+        print('Degree Histogram: ' + repr(degree_histogram))
+        print('Density: ' + repr(density))
+        # print('Connectivity: ' + repr(all_pairs_con))
 
 
 # Represents function nodes in the graph.
@@ -439,7 +443,7 @@ class EdgeDetector(ASTParser):
                                                          dependency + ")")
                     else:
                         dependency_node = n
-                    already_found = True
+                        already_found = True
 
                 if n.get_ast_node() == node:
                     this_node = n
@@ -468,7 +472,7 @@ class EdgeDetector(ASTParser):
             else:
                 class_name = "Unknown"
                 dependency_file = "Unknown"
-            dependency_node = FuncNode(filename=dependency_file, class_name=class_name, name=dependency)
+            dependency_node = FuncNode(filename=dependency_file, class_name=class_name, name=dependency, depth=1)
 
         # Ensures that the relevant nodes are in the graph if they were not already.
         self.add_node(this_node)

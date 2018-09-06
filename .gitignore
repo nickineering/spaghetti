@@ -106,3 +106,4 @@ venv.bak/
 
 # Custom additions below
 .idea/
+dependency_graphs/
