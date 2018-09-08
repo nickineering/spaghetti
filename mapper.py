@@ -143,7 +143,10 @@ class Search:
             if node.is_secondary() is False:
                 for edge in node.get_edges():
                     if edge.is_secondary() is False:
-                        nxg.add_edge(node, edge)
+                        if self.args.inverse is False:
+                            nxg.add_edge(node, edge)
+                        else:
+                            nxg.add_edge(edge, node)
         return nxg
 
     def draw_graph(self):
@@ -283,14 +286,14 @@ class FuncNode:
         else:
             return False
 
-    def add_dependency(self, dependency):
-        self._dependencies.add(dependency)
+    def add_edge(self, edge, dependency=False):
+        if dependency is True:
+            self._dependencies.add(edge)
+        else:
+            self._dependents.add(edge)
 
-    def add_dependent(self, dependent):
-        self._dependents.add(dependent)
-
-    def get_edges(self, inverse=False):
-        if inverse is True:
+    def get_edges(self, dependency=False):
+        if dependency is True:
             return self._dependencies
         else:
             return self._dependents
@@ -314,7 +317,6 @@ class FuncNode:
 
 # Parent class for basic AST parsing. Meant to be extended depending on the task.
 class ASTParser(ast.NodeVisitor):
-    graph = {}
 
     def __init__(self, search, filename="", recursive=0):
         self.current_class = ""
@@ -350,7 +352,7 @@ class ASTParser(ast.NodeVisitor):
 
     # Adds the given node to the graph if it is not already in it.
     def add_node(self, node):
-        if node not in self.graph:
+        if node not in self.search.graph:
             self.search.graph[node] = node
 
 
@@ -429,7 +431,7 @@ class EdgeDetector(ASTParser):
                 dependency = node.func.id
                 home = self.current_filename
             except AttributeError:
-                # print("big error")
+                print("AST Error")
                 self.generic_visit(node)
                 return
 
@@ -477,7 +479,7 @@ class EdgeDetector(ASTParser):
         self.generic_visit(node)
 
     # Adds an edge to the graph.
-    def add_edge(self, is_built_in, dependency, this_node, dependency_node=None,):
+    def add_edge(self, is_built_in, dependency, this_node, dependency_node=None):
         # Error handling if the node's identity could not be determined.
         if dependency_node is None:
             if is_built_in is True:
@@ -493,8 +495,8 @@ class EdgeDetector(ASTParser):
         self.add_node(dependency_node)
 
         # This works even if the node was not added to the graph because the existing node's hash would be the same.
-        self.search.graph[this_node].add_dependency(dependency_node)
-        self.search.graph[dependency_node].add_dependent(this_node)
+        self.search.graph[this_node].add_edge(dependency_node, dependency=True)
+        self.search.graph[dependency_node].add_edge(this_node, dependency=False)
 
 
 # Main initial execution of the script via the command-line.
