@@ -5,3 +5,6 @@ def invisible_dependency():
 def dependent():
     cloak = invisible_dependency
     cloak()
+
+
+dependent()

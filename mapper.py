@@ -49,7 +49,9 @@ class Search:
         parser.add_argument('--measurements', '-m', action='store_true', default=False,
                             help="prints useful measurements about the relationships between functions")
         parser.add_argument('--draw', '-d', action='store_true', default=False,
-                            help="save to result to a .png file in new subdirectory dependency_mapping/")
+                            help="save to result to a .png file in new subdirectory dependency_mapping"+os.sep)
+        parser.add_argument('--simple', '-s', action='store_true', default=False,
+                            help="reduce text in drawings")
         args = parser.parse_args()
 
         # Processes the input parameters.
@@ -150,20 +152,29 @@ class Search:
         return nxg
 
     def draw_graph(self):
+        if self.args.simple is False:
+            title = " ".join(self.args.filename)
+            plt.title(title)
+            node_size = 75
+            width = 2
+            font_size = 10
+        else:
+            node_size = 400
+            width = 4
+            font_size = 20
+
         # pos = networkx.spectral_layout(self.nxg)  # positions for all nodes
         pos = networkx.spring_layout(self.nxg, k=3)
-        networkx.draw_networkx_nodes(self.nxg, pos, node_size=75)
-        networkx.draw_networkx_edges(self.nxg, pos, edge_color='blue')
-        description = networkx.draw_networkx_labels(self.nxg, pos, font_size=10, font_family='sans-serif',
+        networkx.draw_networkx_nodes(self.nxg, pos, node_size=node_size)
+        networkx.draw_networkx_edges(self.nxg, pos, edge_color='blue', arrowsize=40, width=width)
+        description = networkx.draw_networkx_labels(self.nxg, pos, font_size=font_size, font_family='sans-serif',
                                                     font_weight='bold')
         for node, t in description.items():
             t.set_clip_on(False)
 
-        title = " ".join(self.args.filename)
         directory = "dependency_graphs"
         filename = "graph_" + repr(time.time()) + ".png"
         plt.axis('off')
-        plt.title(title)
 
         if not os.path.isdir(directory):
             os.mkdir(directory)
@@ -241,6 +252,7 @@ class FuncNode:
         self._ast_node = ast_node
 
     def __repr__(self):
+        # return self._name
         return self._filename + ":" + self._class_name + "." + self._name
 
     def __eq__(self, other):
