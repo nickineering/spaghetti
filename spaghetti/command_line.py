@@ -4,7 +4,7 @@ import os
 
 
 # Gets input data
-def get_input():
+def get_input(filename=None):
     # Configures the command-line interface.
     parser = argparse.ArgumentParser(
         description='Graph function level Python dependencies to understand and fix spaghetti code')
@@ -26,15 +26,19 @@ def get_input():
 
     # Processes the input parameters.
     if len(args.filename) == 0:
-        args.filename.append(input("Filename to examine: "))
+        if filename is not None:
+            args.filename.append(input("Filename to examine: "))
+        else:
+            args.filename = filename
 
     return args
 
 
-def main():
-    args = get_input()
+def main(filename=None):
+    args = get_input(filename)
     search = spaghetti.mapper.Search(args)
     print()
+    return search
 
 
 # Main initial execution of the script via the command-line.
