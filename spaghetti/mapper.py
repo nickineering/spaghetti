@@ -1,5 +1,4 @@
 import ast
-import argparse
 import os
 import importlib
 import networkx
@@ -11,8 +10,8 @@ import time
 
 class Search:
 
-    def __init__(self):
-        self.args = None
+    def __init__(self, args):
+        self.args = args
         self.tree = {}
         self.creator = {}
         self.files = []
@@ -24,41 +23,11 @@ class Search:
         self.uncrawled = set()
         self.unsure_nodes = set()
 
-        self.get_input()
         self.crawl_files()
         self.process_files()
         self.output_text()
         if self.args.draw is True:
             self.draw_graph()
-
-    # Gets input data
-    def get_input(self):
-        # Configures the command-line interface.
-        parser = argparse.ArgumentParser(
-            description='Graph interfunctional Python dependencies. Searches given modules '
-                        'and/or directories and lists included functions along with their '
-                        'dependents.')
-        parser.add_argument('filename', metavar='F', type=str, nargs="*",
-                            help="the name(s) of files and directories to examine")
-        parser.add_argument('--inverse', '-i', action='store_true', default=False,
-                            help="inverse output so that dependencies are listed instead of dependents")
-        parser.add_argument('--built-ins', '-b', action='store_true',
-                            help="also graph when Python's built in functions are used")
-        parser.add_argument('--raw', '-r', action='store_true', default=False,
-                            help="remove instruction text and formatting")
-        parser.add_argument('--measurements', '-m', action='store_true', default=False,
-                            help="prints useful measurements about the relationships between functions")
-        parser.add_argument('--draw', '-d', action='store_true', default=False,
-                            help="save to result to a .png file in new subdirectory dependency_mapping"+os.sep)
-        parser.add_argument('--simple', '-s', action='store_true', default=False,
-                            help="reduce text in drawings")
-        args = parser.parse_args()
-
-        # Processes the input parameters.
-        if len(args.filename) == 0:
-            args.filename.append(input("Filename to examine: "))
-
-        self.args = args
 
     def crawl_files(self):
         for filename in self.args.filename:
@@ -509,9 +478,3 @@ class EdgeDetector(ASTParser):
         # This works even if the node was not added to the graph because the existing node's hash would be the same.
         self.search.graph[this_node].add_edge(dependency_node, dependency=True)
         self.search.graph[dependency_node].add_edge(this_node, dependency=False)
-
-
-# Main initial execution of the script via the command-line.
-if __name__ == "__main__":
-    search = Search()
-    print()
