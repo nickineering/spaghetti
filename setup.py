@@ -25,7 +25,9 @@ setup(
     packages=['spaghetti'],
     install_requires=['networkx', 'matplotlib'],
     entry_points={
-        'console_scripts': ['spaghetti=spaghetti.command_line:main'],
+        'console_scripts': ['spaghetti=spaghetti.command_line:main'
+                            'spaghetti-graph=spaghetti.command_line:main'
+                            ],
     },
     test_suite='nose.collector',
     tests_require=['nose', 'nose-cover3'],

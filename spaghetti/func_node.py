@@ -73,9 +73,9 @@ class FuncNode:
             return self._dependents
 
     # Returns a string of all the edges.
-    def get_edges_str(self, inverse=False):
+    def get_edges_str(self, dependency=False):
         return_str = ""
-        for edge in sorted(self.get_edges(inverse), key=lambda the_node: the_node.get_string()):
+        for edge in sorted(self.get_edges(dependency=dependency), key=lambda the_node: the_node.get_string()):
             return_str += "(" + repr(edge) + ") "
         return return_str
 

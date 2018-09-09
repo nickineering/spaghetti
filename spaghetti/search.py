@@ -100,7 +100,7 @@ class Search:
         format_string = "%" + indent + "s %" + indent + "s"
         for node in sorted(self.graph, key=lambda the_node: the_node.get_string()):
             if node.is_hidden() is False:
-                print(format_string % (node, node.get_edges_str(inverse=self.args.inverse)))
+                print(format_string % (node, node.get_edges_str(dependency=self.args.inverse)))
 
     # Gets a networkx representation of the graph. Does not include secondary nodes so the measurement is more precise.
     def get_nx_graph(self):
