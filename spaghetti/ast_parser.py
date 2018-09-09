@@ -1,7 +1,7 @@
 import importlib
 import ast
 import os
-from spaghetti.func_node import FuncNode
+from func_node import FuncNode
 
 
 # Parent class for basic AST parsing. Meant to be extended depending on the task.

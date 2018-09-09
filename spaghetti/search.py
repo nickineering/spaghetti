@@ -4,7 +4,7 @@ import networkx
 import statistics
 import matplotlib.pyplot as plt
 import time
-from spaghetti.ast_parser import EdgeDetector, NodeCreator
+from ast_parser import EdgeDetector, NodeCreator
 
 
 class Search:

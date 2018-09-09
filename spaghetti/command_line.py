@@ -1,4 +1,4 @@
-from spaghetti.search import Search
+from search import Search
 import argparse
 import os
 
@@ -25,11 +25,10 @@ def get_input(filename=None):
     args = parser.parse_args()
 
     # Processes the input parameters.
-    if len(args.filename) == 0:
-        if filename is not None:
-            args.filename.append(input("Filename to examine: "))
-        else:
-            args.filename = filename
+    if len(args.filename) == 0 and filename is None:
+        args.filename.append(input("Filename to examine: "))
+    if filename is not None:
+        args.filename.append(filename)
 
     return args
 
@@ -37,7 +36,6 @@ def get_input(filename=None):
 def main(filename=None):
     args = get_input(filename)
     search = Search(args)
-    return search
 
 
 # Main initial execution of the script via the command-line.

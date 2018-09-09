@@ -1,9 +1,8 @@
 from unittest import TestCase
 import unittest
 
-import spaghetti.command_line as cmd
-from spaghetti.search import Search
-from spaghetti.func_node import FuncNode
+import command_line as cmd
+from func_node import FuncNode
 
 
 class Testing(TestCase):
@@ -16,9 +15,6 @@ class Testing(TestCase):
         self.node2 = FuncNode(name=self.name+"2")
         self.node.add_edge(self.node2)
         self.node2.add_edge(self.node, dependency=True)
-
-    def test_search_started(self):
-        self.assertTrue(isinstance(self.output, Search))
 
     def test_node_repr(self):
         self.assertIn(self.name, repr(self.node))

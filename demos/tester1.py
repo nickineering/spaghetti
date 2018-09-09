@@ -1,5 +1,5 @@
-import demos.tester2 as tester2
-from demos.tester2 import T2SubClass
+import tester2
+from tester2 import T2SubClass
 
 
 def function1():
