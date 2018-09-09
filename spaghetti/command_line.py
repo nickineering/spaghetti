@@ -15,8 +15,6 @@ def get_input(filename=None):
                         help="the name(s) of files and directories to examine")
     parser.add_argument('--inverse', '-i', action='store_true', default=False,
                         help="inverse output so that dependencies are listed instead of dependents")
-    parser.add_argument('--built-ins', '-b', action='store_true',
-                        help="also graph when Python's built in functions are used")
     parser.add_argument('--raw', '-r', action='store_true', default=False,
                         help="remove instruction text and formatting")
     parser.add_argument('--measurements', '-m', action='store_true', default=False,

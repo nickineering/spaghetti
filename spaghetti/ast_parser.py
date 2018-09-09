@@ -2,6 +2,7 @@ import importlib
 import ast
 import os
 from func_node import FuncNode
+import builtins
 
 
 # Parent class for basic AST parsing. Meant to be extended depending on the task.
@@ -120,54 +121,48 @@ class EdgeDetector(ASTParser):
                 self.generic_visit(node)
                 return
 
-        # Checks if the current call is to a built-in function.
-        is_built_in = False
-        if dependency in dir(__builtins__):  # sys.builtin_module_names
-            is_built_in = True
-
-        if is_built_in is False or self.search.builtins is True:
-            dependency_node = None
-            already_found = False
-            # Searches the graph and selects the node being referenced.
-            for n in self.search.graph:
-                if n.get_name() == dependency or (n.get_name() == "__init__" and n.get_class() == dependency):
-                    if already_found is True:
-                        # If there is a conflict and this is a more exact match save this.
-                        if n.is_identifier(home) is True and dependency_node.is_identifier(home) is False:
-                            dependency_node = n
-                        # Do nothing if existing node is better.
-                        if n.is_identifier(home) is False and dependency_node.is_identifier(home) is True:
-                            pass
-                        # If neither or both match throw an error. This should not happen normally.
-                        else:
-                            self.search.unsure_nodes.add(self.current_filename + ":" + self.current_function + "(" +
-                                                         dependency + ")")
-                    else:
+        dependency_node = None
+        already_found = False
+        # Searches the graph and selects the node being referenced.
+        for n in self.search.graph:
+            if n.get_name() == dependency or (n.get_name() == "__init__" and n.get_class() == dependency):
+                if already_found is True:
+                    # If there is a conflict and this is a more exact match save this.
+                    if n.is_identifier(home) is True and dependency_node.is_identifier(home) is False:
                         dependency_node = n
-                        already_found = True
+                    # Do nothing if existing node is better.
+                    if n.is_identifier(home) is False and dependency_node.is_identifier(home) is True:
+                        pass
+                    # If neither or both match throw an error. This should not happen normally.
+                    else:
+                        self.search.unsure_nodes.add(self.current_filename + ":" + self.current_function + "(" +
+                                                     dependency + ")")
+                else:
+                    dependency_node = n
+                    already_found = True
 
-                if n.get_ast_node() == node:
-                    this_node = n
+            if n.get_ast_node() == node:
+                this_node = n
 
-            # Creates this node if it was not already in the graph.
-            try:
-                this_node
-            except NameError:
-                if self.current_function == "":
-                    self.current_function = "__main__"
+        # Creates this node if it was not already in the graph.
+        try:
+            this_node
+        except NameError:
+            if self.current_function == "":
+                self.current_function = "__main__"
 
-                this_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
-                                     name=self.current_function, ast_node=node, mode=self.search.mode)
+            this_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
+                                 name=self.current_function, ast_node=node, mode=self.search.mode)
 
-            self.add_edge(is_built_in, dependency, this_node, dependency_node,)
+        self.add_edge(dependency, this_node, dependency_node,)
 
         self.generic_visit(node)
 
     # Adds an edge to the graph.
-    def add_edge(self, is_built_in, dependency, this_node, dependency_node=None):
+    def add_edge(self, dependency, this_node, dependency_node=None):
         # Error handling if the node's identity could not be determined.
         if dependency_node is None:
-            if is_built_in is True:
+            if dependency in dir(builtins):  # sys.builtin_module_names
                 class_name = "Builtins"
                 dependency_file = "System"
             else:

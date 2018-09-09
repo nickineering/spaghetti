@@ -7,10 +7,9 @@ from state import Mode
 
 class Search:
 
-    def __init__(self, filenames, inverse=False, builtins=False, mode=Mode.NORMAL):
+    def __init__(self, filenames, inverse=False, mode=Mode.NORMAL):
         self.filenames = filenames
         self.inverse = inverse
-        self.builtins = builtins
         self.mode = mode
 
         self.tree = {}
