@@ -37,7 +37,6 @@ def get_input(filename=None):
 def main(filename=None):
     args = get_input(filename)
     search = Search(args)
-    print()
     return search
 
 

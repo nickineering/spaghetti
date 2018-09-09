@@ -71,7 +71,6 @@ class Search:
             searched_str = " ".join(self.searched_files) + " ".join(self.searched_directories)
 
             if searched_str != "":
-                print("Mapper searched: %s" % searched_str)
 
                 if len(self.crawled_imports) is not 0:
                     imports_str = ", ".join(sorted(self.crawled_imports))
