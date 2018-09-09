@@ -1,4 +1,4 @@
-import spaghetti.mapper
+from spaghetti.search import Search
 import argparse
 import os
 
@@ -36,7 +36,7 @@ def get_input(filename=None):
 
 def main(filename=None):
     args = get_input(filename)
-    search = spaghetti.mapper.Search(args)
+    search = Search(args)
     print()
     return search
 
