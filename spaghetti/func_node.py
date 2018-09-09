@@ -1,7 +1,11 @@
+import os
+from state import Mode
+
+
 # Represents function nodes in the graph.
 class FuncNode:
 
-    def __init__(self, filename="", class_name="", name="", depth=0, ast_node=None):
+    def __init__(self, filename="", class_name="", name="", depth=0, ast_node=None, mode=Mode.NORMAL):
         self._filename = filename
         self._class_name = class_name
         self._name = name
@@ -12,17 +16,18 @@ class FuncNode:
         # All the other nodes that call this node.
         self._dependents = set()
         self._ast_node = ast_node
+        self.mode = mode
 
     def __repr__(self):
-        # return self._name
-        return self._filename + ":" + self._class_name + "." + self._name
+        return self.get_filename() + self._class_name + "." + self._name
+
+    def set_mode(self, simple):
+        self.mode = simple
 
     def __eq__(self, other):
         return (
             self.__class__ == other.__class__ and
-            self._filename == other.get_filename() and
-            self._class_name == other.get_class() and
-            self._name == other.get_name()
+            self.get_string() == other.get_string()
         )
 
     # This prevents creating multiple nodes at the same position in the graph.
@@ -30,17 +35,22 @@ class FuncNode:
         return hash((self._filename, self._class_name, self._name))
 
     def get_string(self):
-        return self.get_filename() + self.get_class() + self.get_name()
+        return self._filename + self._class_name + self._name
 
     def get_filename(self):
-        return self._filename
+        if self.mode is Mode.LONG:
+            return self._filename.split(os.getcwd() + os.sep)[-1] + ":"
+        elif self.mode is Mode.NORMAL:
+            return self._filename.split(os.sep)[-1] + ":"
+        else:
+            return ""
 
     def get_class(self):
         return self._class_name
 
     # Returns true if identifier might be used by the AST to identify the node.
     def is_identifier(self, identifier):
-        if self._filename == identifier or self._class_name == identifier or self._filename == identifier:
+        if self._filename == identifier or self._class_name == identifier or self._name == identifier:
             return True
         else:
             return False

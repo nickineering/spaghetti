@@ -12,13 +12,11 @@ class ASTParser(ast.NodeVisitor):
         self.current_function = ""
         self.filename = filename
         self.search = search
-        self._uncrawled = set()
 
         # Removes file extension.
         # self.current_filename = self.filename[:-3]
         self.current_filename = self.filename
-        # Removes directory for simplicity. Should be included in future versions.
-        self.current_filename = self.current_filename.split(os.sep)[-1]
+
         self.directory = ""
         self.recursive = recursive
         if self.recursive == 0:
@@ -84,8 +82,8 @@ class NodeCreator(ASTParser):
         self.handle_node(node, "current_class", self.add_class_node)
 
     def add_class_node(self, node):
-        current_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
-                                name="__init__", depth=self.recursive)
+        current_node = FuncNode(filename=self.current_filename, class_name=self.current_class, name="__init__",
+                                depth=self.recursive, mode=self.search.mode)
         self.add_node(current_node)
         self.generic_visit(node)
 
@@ -95,7 +93,7 @@ class NodeCreator(ASTParser):
     # Creates a node for the function even though it might not be connected to any other nodes.
     def add_function_node(self, node):
         current_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
-                                name=self.current_function, depth=self.recursive, ast_node=node)
+                                name=self.current_function, depth=self.recursive, ast_node=node, mode=self.search.mode)
         self.add_node(current_node)
         self.generic_visit(node)
 
@@ -129,7 +127,7 @@ class EdgeDetector(ASTParser):
         if dependency in dir(__builtins__):  # sys.builtin_module_names
             is_built_in = True
 
-        if is_built_in is False or self.search.args.built_ins is True:
+        if is_built_in is False or self.search.builtins is True:
             dependency_node = None
             already_found = False
             # Searches the graph and selects the node being referenced.
@@ -161,7 +159,7 @@ class EdgeDetector(ASTParser):
                     self.current_function = "__main__"
 
                 this_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
-                                     name=self.current_function, ast_node=node)
+                                     name=self.current_function, ast_node=node, mode=self.search.mode)
 
             self.add_edge(is_built_in, dependency, this_node, dependency_node,)
 
@@ -177,7 +175,8 @@ class EdgeDetector(ASTParser):
             else:
                 class_name = "Unknown"
                 dependency_file = "Unknown"
-            dependency_node = FuncNode(filename=dependency_file, class_name=class_name, name=dependency, depth=1)
+            dependency_node = FuncNode(filename=dependency_file, class_name=class_name, name=dependency, depth=1,
+                                       mode=self.search.mode)
 
         # Ensures that the relevant nodes are in the graph if they were not already.
         self.add_node(this_node)
