@@ -1,8 +1,8 @@
 import ast
 import os
 import networkx
-from ast_parser import EdgeDetector, NodeCreator
-from state import Mode
+from spaghetti.ast_parser import EdgeDetector, NodeCreator
+from spaghetti.state import Mode
 
 
 class Search:

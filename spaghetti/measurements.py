@@ -24,3 +24,5 @@ class Measurements:
                 self.potential_pairs += 1
                 if all_pairs_con[node][pair] > 0:
                     self.num_connected_nodes += 1
+
+        self.severity = 100 - 100 * (self.num_connected_nodes / self.potential_pairs)

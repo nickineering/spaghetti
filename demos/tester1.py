@@ -1,11 +1,11 @@
-import tester2
-from tester2 import T2SubClass
+import demos.tester2
+from demos.tester2 import T2SubClass
 
 
 def function1():
     print("function1")
     function2()
-    tester2.t2function1()
+    demos.tester2.t2function1()
     print(lambda_example(5))
 
 
@@ -16,7 +16,7 @@ def function2():
 def function3():
     print("function3")
     recursive_function(5)
-    t2_class = tester2.T2Class()
+    t2_class = demos.tester2.T2Class()
     t2_class.t2method2()
 
 

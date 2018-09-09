@@ -1,9 +1,9 @@
-from search import Search
-from measurements import Measurements
-import draw
+from spaghetti.search import Search
+from spaghetti.measurements import Measurements
+from spaghetti.draw import draw_graph
 import argparse
 import os
-from state import Mode
+from spaghetti.state import Mode
 
 
 # Gets input data
@@ -32,8 +32,8 @@ def get_input(filename=None):
     # Processes the input parameters.
     if len(args.filename) == 0 and filename is None:
         args.filename.append(input("Filename to examine: "))
-    if filename is not None:
-        args.filename.append(filename)
+    elif filename is not None:
+        args.filename[0] = filename
 
     if args.long:
         args.mode = Mode.LONG
@@ -51,7 +51,7 @@ def print_measurements(nxg):
     print('The maximum number of dependents and dependencies per function: ' + repr(measure.max_degree))
     if measure.node_connectivity == 0:
         print('There are isolated functions or groups of isolated functions. Severity: {0:.2f}%'.format(
-            100 - 100 * (measure.num_connected_nodes / measure.potential_pairs)))
+            measure.severity))
     else:
         print('There are no isolated functions or groups of isolated functions. At least {:d} function(s) that '
               'would need to be removed to isolate at least 1 function.'.format(measure.node_connectivity))
@@ -101,7 +101,7 @@ def main(filename=None):
     output_text(search, args)
     if args.draw is True:
         title = " ".join(args.filename)
-        draw.draw_graph(search.get_nx_graph(), title, args.mode)
+        draw_graph(search.get_nx_graph(), title, args.mode)
 
 
 # Main initial execution of the script via the command-line.

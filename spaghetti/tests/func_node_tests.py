@@ -1,15 +1,13 @@
 from unittest import TestCase
 import unittest
 
-import command_line as cmd
-from func_node import FuncNode
+from spaghetti.func_node import FuncNode
 
 
-class Testing(TestCase):
+class FuncNodeTest(TestCase):
     name = "Test"
 
     def setUp(self):
-        self.output = cmd.main(self.name)
         self.node = FuncNode(name=self.name)
         self.node_equal = FuncNode(name=self.name)
         self.node2 = FuncNode(name=self.name+"2")

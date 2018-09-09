@@ -1,7 +1,7 @@
 import importlib
 import ast
 import os
-from func_node import FuncNode
+from spaghetti.func_node import FuncNode
 import builtins
 
 
@@ -64,6 +64,7 @@ class NodeCreator(ASTParser):
             # if imported_name not in self.search.imports:
             imported = importlib.import_module(imported_name)
             # relative_imported = imported.__file__.replace(os.getcwd() + os.sep, "")
+            # import_location = os.path.abspath(imported.__file__)
             visitor = NodeCreator(search=self.search, filename=imported.__file__, recursive=self.recursive+1)
             tree_file = open(imported.__file__)
             tree = ast.parse(tree_file.read())

@@ -2,7 +2,7 @@ import networkx
 import os
 import time
 import matplotlib.pyplot as plt
-from state import Mode
+from spaghetti.state import Mode
 
 
 def draw_graph(nxg, title, mode=Mode.NORMAL):

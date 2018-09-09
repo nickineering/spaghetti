@@ -1,5 +1,5 @@
 import os
-from state import Mode
+from spaghetti.state import Mode
 
 
 # Represents function nodes in the graph.
