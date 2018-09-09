@@ -7,16 +7,18 @@ from state import Mode
 
 class Search:
 
-    def __init__(self, filename, inverse=False, builtins=False, mode=Mode.NORMAL):
-        self.filename = filename
+    def __init__(self, filenames, inverse=False, builtins=False, mode=Mode.NORMAL):
+        self.filenames = filenames
         self.inverse = inverse
         self.builtins = builtins
         self.mode = mode
+
         self.tree = {}
         self.creator = {}
         self.files = []
         self.graph = {}
         self.nxg = None
+
         self.searched_files = set()
         self.searched_directories = set()
         self.crawled_imports = set()
@@ -27,7 +29,7 @@ class Search:
         self.create_edges()
 
     def crawl_files(self):
-        for filename in self.filename:
+        for filename in self.filenames:
             filename = os.path.abspath(os.path.expanduser(filename))
             if os.path.isdir(filename):
                 self.searched_directories.add(filename + os.sep)
@@ -49,27 +51,15 @@ class Search:
     # Adds to the existing graph object.
     def add_file_to_graph(self, file):
         self.tree[file] = ast.parse(open(file).read())
-        # print(ast.dump(self.tree[file]))
         creator = NodeCreator(search=self, filename=file)
         creator.visit(self.tree[file])
         self.files.append(file)
 
     def create_edges(self):
-        # Processes each file.
         for file in self.files:
             detector = EdgeDetector(search=self, filename=file)
             detector.visit(self.tree[file])
 
-    def get_graph_str(self, indent=0):
-        # Prints each line of the data.
-        graph_str = ""
-        format_string = "%" + indent + "s %" + indent + "s\n"
-        for node in sorted(self.graph, key=lambda the_node: the_node.get_string()):
-            if node.is_hidden() is False:
-                graph_str += format_string % (node, node.get_edges_str(dependency=self.inverse))
-        return graph_str
-
-    # For extension purposes only
     def get_graph(self):
         return self.graph
 
@@ -92,6 +82,15 @@ class Search:
                                 nxg.add_edge(edge, node)
             self.nxg = nxg
             return nxg
+
+    def get_graph_str(self, indent=0):
+        # Prints each line of the data.
+        graph_str = ""
+        format_string = "%" + indent + "s %" + indent + "s\n"
+        for node in sorted(self.graph, key=lambda the_node: the_node.get_string()):
+            if node.is_hidden() is False:
+                graph_str += format_string % (node, node.get_edges_str(dependency=self.inverse))
+        return graph_str
 
     def print_experimental_measurements(self):
         maximal_independent_set = networkx.algorithms.mis.maximal_independent_set(self.nxg.to_undirected())

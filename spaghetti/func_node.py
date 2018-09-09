@@ -21,9 +21,6 @@ class FuncNode:
     def __repr__(self):
         return self.get_filename() + self._class_name + "." + self._name
 
-    def set_mode(self, simple):
-        self.mode = simple
-
     def __eq__(self, other):
         return (
             self.__class__ == other.__class__ and
@@ -33,9 +30,6 @@ class FuncNode:
     # This prevents creating multiple nodes at the same position in the graph.
     def __hash__(self):
         return hash((self._filename, self._class_name, self._name))
-
-    def get_string(self):
-        return self._filename + self._class_name + self._name
 
     def get_filename(self):
         if self.mode is Mode.LONG:
@@ -48,27 +42,8 @@ class FuncNode:
     def get_class(self):
         return self._class_name
 
-    # Returns true if identifier might be used by the AST to identify the node.
-    def is_identifier(self, identifier):
-        if self._filename == identifier or self._class_name == identifier or self._name == identifier:
-            return True
-        else:
-            return False
-
     def get_name(self):
         return self._name
-
-    def is_hidden(self):
-        if self._depth > 0 and len(self._dependencies) == 0 and len(self._dependents) == 0:
-            return True
-        else:
-            return False
-
-    def is_secondary(self):
-        if self._depth > 0:
-            return True
-        else:
-            return False
 
     def add_edge(self, edge, dependency=False):
         if dependency is True:
@@ -82,15 +57,37 @@ class FuncNode:
         else:
             return self._dependents
 
+    def get_ast_node(self):
+        return self._ast_node
+
+    def get_string(self):
+        return self._filename + self._class_name + self._name
+
+    # Returns true if identifier might be used by the AST to identify the node.
+    def is_identifier(self, identifier):
+        if self._filename == identifier or self._class_name == identifier or self._name == identifier:
+            return True
+        else:
+            return False
+
+    def is_hidden(self):
+        if self._depth > 0 and len(self._dependencies) == 0 and len(self._dependents) == 0:
+            return True
+        else:
+            return False
+
+    def is_secondary(self):
+        if self._depth > 0:
+            return True
+        else:
+            return False
+
     # Returns a string of all the edges.
     def get_edges_str(self, dependency=False):
         return_str = ""
         for edge in sorted(self.get_edges(dependency=dependency), key=lambda the_node: the_node.get_string()):
             return_str += "(" + repr(edge) + ") "
         return return_str
-
-    def get_ast_node(self):
-        return self._ast_node
 
     def get_indegree(self):
         return len(self._dependents)

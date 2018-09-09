@@ -67,7 +67,6 @@ def output_text(search, args):
         print(search.get_graph_str(mode=args.mode))
     else:
         searched_str = " ".join(search.searched_files) + " ".join(search.searched_directories)
-
         if searched_str != "":
 
             if len(search.crawled_imports) is not 0:
@@ -100,7 +99,7 @@ def output_text(search, args):
 
 def main(filename=None):
     args = get_input(filename)
-    search = Search(filename=args.filename, inverse=args.inverse, mode=args.mode)
+    search = Search(filenames=args.filename, inverse=args.inverse, mode=args.mode)
     output_text(search, args)
     if args.draw is True:
         title = " ".join(args.filename)

@@ -8,22 +8,20 @@ from func_node import FuncNode
 class ASTParser(ast.NodeVisitor):
 
     def __init__(self, search, filename="", recursive=0):
-        self.current_class = ""
-        self.current_function = ""
-        self.filename = filename
         self.search = search
-
-        # Removes file extension.
-        # self.current_filename = self.filename[:-3]
-        self.current_filename = self.filename
+        self.filename = filename
+        self.recursive = recursive
 
         self.directory = ""
-        self.recursive = recursive
+        # self.current_filename = self.filename[:-3] # Removes file extension.
+        self.current_filename = self.filename
+        self.current_class = ""
+        self.current_function = ""
+
         if self.recursive == 0:
             for x in self.filename.split(os.sep)[:-1]:
                 self.directory += x + os.sep
             self.directory = self.directory.replace(os.getcwd() + os.sep, "")
-        # self.full_directory = os.getcwd() + os.sep + self.directory
 
     def visit_ClassDef(self, node):
         self.handle_node(node, "current_class", self.generic_visit)
