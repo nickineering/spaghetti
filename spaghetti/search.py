@@ -1,8 +1,13 @@
 import ast
 import os
 import networkx
-from spaghetti.ast_parser import EdgeDetector, NodeCreator
-from spaghetti.state import Mode
+
+try:
+    from spaghetti.ast_parser import EdgeDetector, NodeCreator
+    from spaghetti.state import Mode
+except ImportError:
+    from ast_parser import EdgeDetector, NodeCreator
+    from state import Mode
 
 
 # Conducts a search of given filenames or directories. Produces a Networkx functional dependency graph and associated metadata.

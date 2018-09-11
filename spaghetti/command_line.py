@@ -1,16 +1,23 @@
-from spaghetti.search import Search
-from spaghetti.measurements import Measurements
-from spaghetti.draw import draw_graph
 import argparse
 import os
-from spaghetti.state import Mode
+
+try:
+    from spaghetti.state import Mode
+    from spaghetti.search import Search
+    from spaghetti.measurements import Measurements
+    from spaghetti.draw import draw_graph
+except:
+    from state import Mode
+    from search import Search
+    from measurements import Measurements
+    from draw import draw_graph
 
 
 # Gets input data supplied as command-line arguments
 def get_input(filename=None):
     # Configures the command-line interface.
     parser = argparse.ArgumentParser(
-        description='Graph function level Python dependencies to understand and fix spaghetti code')
+        description='Graph function level Python 3 dependencies to understand and fix spaghetti code')
     parser.add_argument('filename', metavar='F', type=str, nargs="*",
                         help="the name(s) of files and directories to examine")
     parser.add_argument('--inverse', '-i', action='store_true', default=False,

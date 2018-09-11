@@ -2,7 +2,11 @@ import networkx
 import os
 import time
 import matplotlib.pyplot as plt
-from spaghetti.state import Mode
+
+try:
+    from spaghetti.state import Mode
+except ImportError:
+    from state import Mode
 
 
 # Creates an image of the supplied Networkx graph and saves it to a relative folder

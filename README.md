@@ -1,4 +1,3 @@
-
 # Spaghetti: A Function Level Python Dependency Grapher
 Spaghetti creates a dependency graph of your Python 3 modules and/or packages and outputs it conveniently on the command-line. It supports text based output, image based output (experimental), and benchmarks the state of your code. Say goodbye to spaghetti code in your projects.
 
@@ -19,7 +18,7 @@ usage: spaghetti [-h] [--inverse] [--raw] [--measurements] [--draw] [--long]
                   [--simple] [--quiet]
                      [F [F ...]]
 
-Graph function level Python dependencies to understand and fix spaghetti code
+Graph function level Python 3 dependencies to understand and fix spaghetti code
 
 positional arguments:
   F                       the name(s) of files and directories to examine
