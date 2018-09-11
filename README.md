@@ -1,3 +1,4 @@
+
 # Spaghetti: A Function Level Python Dependency Grapher
 Spaghetti creates a dependency graph of your Python 3 modules and/or packages and outputs it conveniently on the command-line. It supports text based output, image based output (experimental), and benchmarks the state of your code. Say goodbye to spaghetti code in your projects.
 
@@ -11,4 +12,31 @@ As a best practice it is recommended that you set up a virtual environment befor
 If for some reason you need to uninstall spaghetti run: `pip3 uninstall spaghetti-graph`
 
 ## Usage
-Once installed run `spaghetti` on the command-line in any directory you prefer. The prompt does not require options for basic functionlity, but should you desire further customization run `spaghetti -h` for a complete list of all options.
+Once installed run `spaghetti` on the command-line in any directory you prefer. If you did not install via PIP run `python3 spaghetti` in the main folder of the repository so that you are calling subfolder spaghetti. The prompt does not require options for basic functionlity, but should you desire them the following is the output of the help screen:
+```$spaghetti --help
+
+usage: spaghetti [-h] [--inverse] [--raw] [--measurements] [--draw] [--long]
+                  [--simple] [--quiet]
+                     [F [F ...]]
+
+Graph function level Python dependencies to understand and fix spaghetti code
+
+positional arguments:
+  F                       the name(s) of files and directories to examine
+
+optional arguments:
+  -h, --help              show this help message and exit
+  --inverse, -i           inverse output so that dependencies are listed instead
+                          of dependents
+  --raw, -r               remove instruction text and formatting
+  --measurements, -m      prints useful measurements about the relationships
+                          between functions
+  --draw, -d              save to result to a .png file in new subdirectory
+                          dependency_mapping/
+  --long, -l              display modules paths relative to the current working
+                          directory
+  --simple, -s            exclude module information so only class and function
+                          names are displayed
+  --quiet, -q             suppress non-critical errors
+
+```
