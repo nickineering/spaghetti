@@ -6,7 +6,7 @@ import os
 from spaghetti.state import Mode
 
 
-# Gets input data
+# Gets input data supplied as command-line arguments
 def get_input(filename=None):
     # Configures the command-line interface.
     parser = argparse.ArgumentParser(
@@ -29,7 +29,6 @@ def get_input(filename=None):
                         help="suppress non-critical errors")
     args = parser.parse_args()
 
-    # Processes the input parameters.
     if len(args.filename) == 0 and filename is None:
         args.filename.append(input("Filename to examine: "))
     elif filename is not None:
@@ -44,7 +43,7 @@ def get_input(filename=None):
 
     return args
 
-
+# Prints detailed measurments about the Networkx graph
 def print_measurements(nxg):
     measure = Measurements(nxg)
     print('The average number of dependents and dependencies per function: {0:.2f}'.format(measure.mean_degree))
@@ -58,7 +57,7 @@ def print_measurements(nxg):
     print('Total functions found in the search area: ' + repr(measure.node_num))
 
 
-# Prints the results including a list of functions and their dependencies in the terminal.
+# Prints the results including a list of functions and their dependencies in the terminal
 def output_text(search, args):
 
     if args.raw is True:
@@ -95,6 +94,7 @@ def output_text(search, args):
             print(search.get_graph_str(indent=indent))
 
 
+# Entry point for command-line interface
 def main(filename=None):
     args = get_input(filename)
     search = Search(filenames=args.filename, inverse=args.inverse, mode=args.mode)
@@ -104,6 +104,6 @@ def main(filename=None):
         draw_graph(search.get_nx_graph(), title, args.mode)
 
 
-# Main initial execution of the script via the command-line.
+# In case the file is executed directly
 if __name__ == "__main__":
     main()

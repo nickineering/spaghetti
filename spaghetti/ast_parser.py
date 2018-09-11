@@ -5,7 +5,7 @@ from spaghetti.func_node import FuncNode
 import builtins
 
 
-# Parent class for basic AST parsing. Meant to be extended depending on the task.
+# Parent class for basic AST parsing. Meant to be extended depending on the task
 class ASTParser(ast.NodeVisitor):
 
     def __init__(self, search, filename="", recursive=0):
@@ -30,28 +30,30 @@ class ASTParser(ast.NodeVisitor):
     def visit_FunctionDef(self, node):
         self.handle_node(node, "current_function", self.generic_visit)
 
+    # Ensures that subclasses and inner functions do not permanently change the parent's name
     def handle_node(self, node, title, handler):
         old_title = self.__dict__[title]
         self.__dict__[title] = node.name
         handler(node)
         self.__dict__[title] = old_title
 
-    # Adds the given node to the graph if it is not already in it.
+    # Adds the given node to the graph if it is not already in it
     def add_node(self, node):
         if node not in self.search.graph:
             self.search.graph[node] = node
 
 
-# Searches AST for nodes and adds them to the graph.
+# Searches AST for nodes and adds them to the graph
 class NodeCreator(ASTParser):
 
+    # Ensures that imported code is graphed as well
     def visit_Import(self, node):
-        # print(ast.dump(node))
         if self.recursive < 1:
             for reference in node.names:
                 folders = self.directory.split(os.sep)
                 self.crawl_import(node, reference, folders)
 
+    # Utility function that recursively retries to crawl hard imports
     def crawl_import(self, node, reference, folders, folder_index=0):
         try:
             folder = ""
@@ -61,10 +63,7 @@ class NodeCreator(ASTParser):
                     folder += folders[x] + "."
                 x += 1
             imported_name = folder + reference.name
-            # if imported_name not in self.search.imports:
             imported = importlib.import_module(imported_name)
-            # relative_imported = imported.__file__.replace(os.getcwd() + os.sep, "")
-            # import_location = os.path.abspath(imported.__file__)
             visitor = NodeCreator(search=self.search, filename=imported.__file__, recursive=self.recursive+1)
             tree_file = open(imported.__file__)
             tree = ast.parse(tree_file.read())
@@ -81,6 +80,7 @@ class NodeCreator(ASTParser):
     def visit_ClassDef(self, node):
         self.handle_node(node, "current_class", self.add_class_node)
 
+    # Creates a node for the class even though it might not be connected to any other nodes
     def add_class_node(self, node):
         current_node = FuncNode(filename=self.current_filename, class_name=self.current_class, name="__init__",
                                 depth=self.recursive, mode=self.search.mode)
@@ -89,8 +89,8 @@ class NodeCreator(ASTParser):
 
     def visit_FunctionDef(self, node):
         self.handle_node(node, "current_function", self.add_function_node)
-
-    # Creates a node for the function even though it might not be connected to any other nodes.
+   
+    # Creates a node for the function even though it might not be connected to any other nodes
     def add_function_node(self, node):
         current_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
                                 name=self.current_function, depth=self.recursive, ast_node=node, mode=self.search.mode)
@@ -98,7 +98,7 @@ class NodeCreator(ASTParser):
         self.generic_visit(node)
 
 
-# Detects connections in the AST and adds them as edges in the graph.
+# Detects connections in the AST and adds them as edges in the graph
 class EdgeDetector(ASTParser):
 
     # Records actual function calls
@@ -118,17 +118,17 @@ class EdgeDetector(ASTParser):
                 dependency = node.func.id
                 home = self.current_filename
             except AttributeError:
-                print("AST Error")
                 self.generic_visit(node)
                 return
 
         dependency_node = None
         already_found = False
-        # Searches the graph and selects the node being referenced.
+
+        # Searches the graph and selects the node being referenced
         for n in self.search.graph:
             if n.get_name() == dependency or (n.get_name() == "__init__" and n.get_class() == dependency):
                 if already_found is True:
-                    # If there is a conflict and this is a more exact match save this.
+                    # If there is a conflict and this is a more exact match save this
                     if n.is_identifier(home) is True and dependency_node.is_identifier(home) is False:
                         dependency_node = n
                     # Do nothing if existing node is better.
@@ -145,7 +145,7 @@ class EdgeDetector(ASTParser):
             if n.get_ast_node() == node:
                 this_node = n
 
-        # Creates this node if it was not already in the graph.
+        # Creates this node if it was not already in the graph
         try:
             this_node
         except NameError:
@@ -156,12 +156,11 @@ class EdgeDetector(ASTParser):
                                  name=self.current_function, ast_node=node, mode=self.search.mode)
 
         self.add_edge(dependency, this_node, dependency_node,)
-
         self.generic_visit(node)
 
-    # Adds an edge to the graph.
+    # Adds an edge to the graph
     def add_edge(self, dependency, this_node, dependency_node=None):
-        # Error handling if the node's identity could not be determined.
+        # Error handling if the node's identity could not be determined
         if dependency_node is None:
             if dependency in dir(builtins):  # sys.builtin_module_names
                 class_name = "Builtins"
@@ -172,7 +171,7 @@ class EdgeDetector(ASTParser):
             dependency_node = FuncNode(filename=dependency_file, class_name=class_name, name=dependency, depth=1,
                                        mode=self.search.mode)
 
-        # Ensures that the relevant nodes are in the graph if they were not already.
+        # Ensures that the relevant nodes are in the graph if they were not already
         self.add_node(this_node)
         self.add_node(dependency_node)
 
