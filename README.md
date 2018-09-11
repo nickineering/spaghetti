@@ -12,7 +12,7 @@ As a best practice it is recommended that you set up a virtual environment befor
 If for some reason you need to uninstall spaghetti run: `pip3 uninstall spaghetti-graph`
 
 ## Usage
-Once installed run `spaghetti` on the command-line in any directory you prefer. If you did not install via PIP run `python3 spaghetti` in the main folder of the repository so that you are calling subfolder spaghetti. The prompt does not require options for basic functionlity, but should you desire them the following is the output of the help screen:
+Once installed run `spaghetti` on the command-line in any directory you prefer. In some environments you might have to run `python3 spaghetti` instead. The prompt does not require options for basic functionlity, but should you desire them the following is the output of the help screen:
 ```$spaghetti --help
 
 usage: spaghetti [-h] [--inverse] [--raw] [--measurements] [--draw] [--long]

@@ -46,7 +46,7 @@ class Search:
                     filename += ".py"
                 if os.path.isfile(filename):
                     self.searched_files.add(filename)
-                    self.add_file_to_graph(filename)
+                    self.create_nodes(filename)
                 else:
                     print("Error: Could not find %s" % filename)
 
