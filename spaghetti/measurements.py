@@ -5,7 +5,10 @@ import statistics
 class Measurements:
 
     def __init__(self, nxg):
+        if not isinstance(nxg, networkx.classes.digraph.DiGraph):
+            raise TypeError
         self.nxg = nxg
+
         degree_sequence = sorted([d for n, d in self.nxg.degree()], reverse=True)
         # all_pairs_con = networkx.algorithms.approximation.connectivity.all_pairs_node_connectivity(self.nxg)
         all_pairs_con = networkx.algorithms.connectivity.connectivity.all_pairs_node_connectivity(
@@ -17,12 +20,12 @@ class Measurements:
         self.max_degree = max(degree_sequence)
         self.mean_degree = statistics.mean(degree_sequence)
 
-        self.num_connected_nodes = 0
-        self.potential_pairs = 0
+        num_connected_nodes = 0
+        potential_pairs = 0
         for node in all_pairs_con:
             for pair in all_pairs_con[node]:
-                self.potential_pairs += 1
+                potential_pairs += 1
                 if all_pairs_con[node][pair] > 0:
-                    self.num_connected_nodes += 1
+                    num_connected_nodes += 1
 
-        self.severity = 100 - 100 * (self.num_connected_nodes / self.potential_pairs)
+        self.severity = 100 - 100 * (num_connected_nodes / potential_pairs)
