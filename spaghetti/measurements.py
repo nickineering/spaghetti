@@ -2,6 +2,7 @@ import networkx
 import statistics
 
 
+# Stores useful measurements on the given Networkx graph
 class Measurements:
 
     def __init__(self, nxg):

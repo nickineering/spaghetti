@@ -1,8 +1,13 @@
 import os
-from spaghetti.state import Mode
+
+try:
+    from spaghetti.state import Mode
+except ImportError:
+    from state import Mode
 
 
-# Represents function nodes in the graph.
+
+# Represents function nodes in the graph
 class FuncNode:
 
     def __init__(self, filename="", class_name="", name="", depth=0, ast_node=None, mode=Mode.NORMAL):
@@ -27,10 +32,11 @@ class FuncNode:
             self.get_string() == other.get_string()
         )
 
-    # This prevents creating multiple nodes at the same position in the graph.
+    # This prevents creating multiple nodes at the same position in the graph
     def __hash__(self):
         return hash((self._filename, self._class_name, self._name))
 
+    # Displays filename and hides directory information depending on the mode
     def get_filename(self):
         if self.mode is Mode.LONG:
             return self._filename.split(os.getcwd() + os.sep)[-1] + ":"
@@ -63,7 +69,7 @@ class FuncNode:
     def get_string(self):
         return self._filename + self._class_name + self._name
 
-    # Returns true if identifier might be used by the AST to identify the node.
+    # Returns true if identifier might be used by the AST to identify the node
     def is_identifier(self, identifier):
         if self._filename == identifier or self._class_name == identifier or self._name == identifier:
             return True
@@ -82,7 +88,7 @@ class FuncNode:
         else:
             return False
 
-    # Returns a string of all the edges.
+    # Returns a string of all the edges
     def get_edges_str(self, dependency=False):
         return_str = ""
         for edge in sorted(self.get_edges(dependency=dependency), key=lambda the_node: the_node.get_string()):
