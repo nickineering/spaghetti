@@ -9,7 +9,11 @@ class CommandLineTest(TestCase):
     name = "Test"
 
     def setUp(self):
-        self.measure = Measurements(networkx.DiGraph())
+        graph = networkx.DiGraph()
+        graph.add_node((0, 1))
+        graph.add_node((0, 2))
+
+        self.measure = Measurements(graph)
 
     def test_positive_max_degree(self):
         self.assertGreaterEqual(self.measure.max_degree, 0)
