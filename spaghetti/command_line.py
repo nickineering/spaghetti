@@ -52,7 +52,7 @@ def get_input(filename=None):
         "-d",
         action="store_true",
         default=False,
-        help="save to result to a .png file in new subdirectory dependency_mapping"
+        help="save to result to a .png file in new subdirectory dependency_graphs"
         + os.sep,
     )
     parser.add_argument(
