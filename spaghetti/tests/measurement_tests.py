@@ -1,5 +1,6 @@
-from unittest import TestCase
 import unittest
+from unittest import TestCase
+
 import networkx
 
 from spaghetti.measurements import Measurements

@@ -2,15 +2,15 @@ import argparse
 import os
 
 try:
-    from spaghetti.state import Mode
-    from spaghetti.search import Search
-    from spaghetti.measurements import Measurements
     from spaghetti.draw import draw_graph
+    from spaghetti.measurements import Measurements
+    from spaghetti.search import Search
+    from spaghetti.state import Mode
 except:
-    from state import Mode
-    from search import Search
-    from measurements import Measurements
     from draw import draw_graph
+    from measurements import Measurements
+    from search import Search
+    from state import Mode
 
 
 # Gets input data supplied as command-line arguments

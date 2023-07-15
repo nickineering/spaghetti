@@ -1,7 +1,7 @@
-from unittest import TestCase
-import unittest
 import io
 import sys
+import unittest
+from unittest import TestCase
 
 import spaghetti.command_line as cmd
 from spaghetti.state import Mode

@@ -1,5 +1,5 @@
-from unittest import TestCase
 import unittest
+from unittest import TestCase
 
 from spaghetti.func_node import FuncNode
 

@@ -1,7 +1,8 @@
-import networkx
 import os
 import time
+
 import matplotlib.pyplot as plt
+import networkx
 
 try:
     from spaghetti.state import Mode

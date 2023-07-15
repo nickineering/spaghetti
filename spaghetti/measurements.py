@@ -1,5 +1,6 @@
-import networkx
 import statistics
+
+import networkx
 
 
 # Stores useful measurements on the given Networkx graph

@@ -1,7 +1,7 @@
-import importlib
 import ast
-import os
 import builtins
+import importlib
+import os
 
 try:
     from spaghetti.func_node import FuncNode
