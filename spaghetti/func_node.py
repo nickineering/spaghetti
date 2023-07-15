@@ -6,11 +6,17 @@ except ImportError:
     from state import Mode
 
 
-
 # Represents function nodes in the graph
 class FuncNode:
-
-    def __init__(self, filename="", class_name="", name="", depth=0, ast_node=None, mode=Mode.NORMAL):
+    def __init__(
+        self,
+        filename="",
+        class_name="",
+        name="",
+        depth=0,
+        ast_node=None,
+        mode=Mode.NORMAL,
+    ):
         self._filename = filename
         self._class_name = class_name
         self._name = name
@@ -28,8 +34,8 @@ class FuncNode:
 
     def __eq__(self, other):
         return (
-            self.__class__ == other.__class__ and
-            self.get_string() == other.get_string()
+            self.__class__ == other.__class__
+            and self.get_string() == other.get_string()
         )
 
     # This prevents creating multiple nodes at the same position in the graph
@@ -71,13 +77,21 @@ class FuncNode:
 
     # Returns true if identifier might be used by the AST to identify the node
     def is_identifier(self, identifier):
-        if self._filename == identifier or self._class_name == identifier or self._name == identifier:
+        if (
+            self._filename == identifier
+            or self._class_name == identifier
+            or self._name == identifier
+        ):
             return True
         else:
             return False
 
     def is_hidden(self):
-        if self._depth > 0 and len(self._dependencies) == 0 and len(self._dependents) == 0:
+        if (
+            self._depth > 0
+            and len(self._dependencies) == 0
+            and len(self._dependents) == 0
+        ):
             return True
         else:
             return False
@@ -91,7 +105,10 @@ class FuncNode:
     # Returns a string of all the edges
     def get_edges_str(self, dependency=False):
         return_str = ""
-        for edge in sorted(self.get_edges(dependency=dependency), key=lambda the_node: the_node.get_string()):
+        for edge in sorted(
+            self.get_edges(dependency=dependency),
+            key=lambda the_node: the_node.get_string(),
+        ):
             return_str += "(" + repr(edge) + ") "
         return return_str
 

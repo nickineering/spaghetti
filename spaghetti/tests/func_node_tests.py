@@ -10,7 +10,7 @@ class FuncNodeTest(TestCase):
     def setUp(self):
         self.node = FuncNode(name=self.name)
         self.node_equal = FuncNode(name=self.name)
-        self.node2 = FuncNode(name=self.name+"2")
+        self.node2 = FuncNode(name=self.name + "2")
         self.node.add_edge(self.node2)
         self.node2.add_edge(self.node, dependency=True)
 
@@ -27,6 +27,6 @@ class FuncNodeTest(TestCase):
         self.assertEqual(self.node, self.node_equal)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # begin the unittest.main()
     unittest.main()

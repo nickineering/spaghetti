@@ -12,7 +12,6 @@ except ImportError:
 
 # Conducts a search of given filenames or directories. Produces a Networkx functional dependency graph and associated metadata.
 class Search:
-
     def __init__(self, filenames, inverse=False, mode=Mode.NORMAL):
         self.filenames = filenames
         self.inverse = inverse
@@ -99,6 +98,8 @@ class Search:
         format_string = "%" + indent + "s %" + indent + "s\n"
         for node in sorted(self.graph, key=lambda the_node: the_node.get_string()):
             if node.is_hidden() is False:
-                graph_str += format_string % (node, node.get_edges_str(dependency=self.inverse))
+                graph_str += format_string % (
+                    node,
+                    node.get_edges_str(dependency=self.inverse),
+                )
         return graph_str
-

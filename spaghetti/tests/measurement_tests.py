@@ -28,6 +28,6 @@ class CommandLineTest(TestCase):
         self.assertGreaterEqual(self.measure.node_connectivity, 0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # begin the unittest.main()
     unittest.main()

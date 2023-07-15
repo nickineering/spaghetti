@@ -11,7 +11,6 @@ except ImportError:
 
 # Parent class for basic AST parsing. Meant to be extended depending on the task
 class ASTParser(ast.NodeVisitor):
-
     def __init__(self, search, filename="", recursive=0):
         self.search = search
         self.filename = filename
@@ -49,7 +48,6 @@ class ASTParser(ast.NodeVisitor):
 
 # Searches AST for nodes and adds them to the graph
 class NodeCreator(ASTParser):
-
     # Ensures that imported code is graphed as well
     def visit_Import(self, node):
         if self.recursive < 1:
@@ -68,14 +66,18 @@ class NodeCreator(ASTParser):
                 x += 1
             imported_name = folder + reference.name
             imported = importlib.import_module(imported_name)
-            visitor = NodeCreator(search=self.search, filename=imported.__file__, recursive=self.recursive+1)
+            visitor = NodeCreator(
+                search=self.search,
+                filename=imported.__file__,
+                recursive=self.recursive + 1,
+            )
             tree_file = open(imported.__file__)
             tree = ast.parse(tree_file.read())
             visitor.visit(tree)
             self.search.crawled_imports.add(imported_name)
         except ImportError:
             if folder_index < len(folders):
-                self.crawl_import(node, reference, folders, folder_index+1)
+                self.crawl_import(node, reference, folders, folder_index + 1)
             else:
                 self.search.uncrawled.add(reference.name)
         except AttributeError:
@@ -86,25 +88,35 @@ class NodeCreator(ASTParser):
 
     # Creates a node for the class even though it might not be connected to any other nodes
     def add_class_node(self, node):
-        current_node = FuncNode(filename=self.current_filename, class_name=self.current_class, name="__init__",
-                                depth=self.recursive, mode=self.search.mode)
+        current_node = FuncNode(
+            filename=self.current_filename,
+            class_name=self.current_class,
+            name="__init__",
+            depth=self.recursive,
+            mode=self.search.mode,
+        )
         self.add_node(current_node)
         self.generic_visit(node)
 
     def visit_FunctionDef(self, node):
         self.handle_node(node, "current_function", self.add_function_node)
-   
+
     # Creates a node for the function even though it might not be connected to any other nodes
     def add_function_node(self, node):
-        current_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
-                                name=self.current_function, depth=self.recursive, ast_node=node, mode=self.search.mode)
+        current_node = FuncNode(
+            filename=self.current_filename,
+            class_name=self.current_class,
+            name=self.current_function,
+            depth=self.recursive,
+            ast_node=node,
+            mode=self.search.mode,
+        )
         self.add_node(current_node)
         self.generic_visit(node)
 
 
 # Detects connections in the AST and adds them as edges in the graph
 class EdgeDetector(ASTParser):
-
     # Records actual function calls
     def visit_Call(self, node):
         # print(ast.dump(node))
@@ -130,18 +142,32 @@ class EdgeDetector(ASTParser):
 
         # Searches the graph and selects the node being referenced
         for n in self.search.graph:
-            if n.get_name() == dependency or (n.get_name() == "__init__" and n.get_class() == dependency):
+            if n.get_name() == dependency or (
+                n.get_name() == "__init__" and n.get_class() == dependency
+            ):
                 if already_found is True:
                     # If there is a conflict and this is a more exact match save this
-                    if n.is_identifier(home) is True and dependency_node.is_identifier(home) is False:
+                    if (
+                        n.is_identifier(home) is True
+                        and dependency_node.is_identifier(home) is False
+                    ):
                         dependency_node = n
                     # Do nothing if existing node is better.
-                    if n.is_identifier(home) is False and dependency_node.is_identifier(home) is True:
+                    if (
+                        n.is_identifier(home) is False
+                        and dependency_node.is_identifier(home) is True
+                    ):
                         pass
                     # If neither or both match throw an error. This should not happen normally.
                     else:
-                        self.search.unsure_nodes.add(self.current_filename + ":" + self.current_function + "(" +
-                                                     dependency + ")")
+                        self.search.unsure_nodes.add(
+                            self.current_filename
+                            + ":"
+                            + self.current_function
+                            + "("
+                            + dependency
+                            + ")"
+                        )
                 else:
                     dependency_node = n
                     already_found = True
@@ -156,10 +182,19 @@ class EdgeDetector(ASTParser):
             if self.current_function == "":
                 self.current_function = "__main__"
 
-            this_node = FuncNode(filename=self.current_filename, class_name=self.current_class,
-                                 name=self.current_function, ast_node=node, mode=self.search.mode)
+            this_node = FuncNode(
+                filename=self.current_filename,
+                class_name=self.current_class,
+                name=self.current_function,
+                ast_node=node,
+                mode=self.search.mode,
+            )
 
-        self.add_edge(dependency, this_node, dependency_node,)
+        self.add_edge(
+            dependency,
+            this_node,
+            dependency_node,
+        )
         self.generic_visit(node)
 
     # Adds an edge to the graph
@@ -172,8 +207,13 @@ class EdgeDetector(ASTParser):
             else:
                 class_name = "Unknown"
                 dependency_file = "Unknown"
-            dependency_node = FuncNode(filename=dependency_file, class_name=class_name, name=dependency, depth=1,
-                                       mode=self.search.mode)
+            dependency_node = FuncNode(
+                filename=dependency_file,
+                class_name=class_name,
+                name=dependency,
+                depth=1,
+                mode=self.search.mode,
+            )
 
         # Ensures that the relevant nodes are in the graph if they were not already
         self.add_node(this_node)

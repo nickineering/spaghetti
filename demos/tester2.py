@@ -12,7 +12,6 @@ def t2function3():
 
 
 class T2Class:
-
     def t2method1(self):
         print("T2method1")
 
@@ -21,7 +20,6 @@ class T2Class:
 
 
 class T2SubClass(T2Class):
-
     def __init__(self):
         print("T2SubClass.__init__")
 

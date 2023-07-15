@@ -17,23 +17,65 @@ except:
 def get_input(filename=None):
     # Configures the command-line interface.
     parser = argparse.ArgumentParser(
-        description='Graph function level Python 3 dependencies to understand and fix spaghetti code')
-    parser.add_argument('filename', metavar='F', type=str, nargs="*",
-                        help="the name(s) of files and directories to examine")
-    parser.add_argument('--inverse', '-i', action='store_true', default=False,
-                        help="inverse output so that dependencies are listed instead of dependents")
-    parser.add_argument('--raw', '-r', action='store_true', default=False,
-                        help="remove instruction text and formatting")
-    parser.add_argument('--measurements', '-m', action='store_true', default=False,
-                        help="prints useful measurements about the relationships between functions")
-    parser.add_argument('--draw', '-d', action='store_true', default=False,
-                        help="save to result to a .png file in new subdirectory dependency_mapping" + os.sep)
-    parser.add_argument('--long', '-l', action='store_true', default=False,
-                        help="display modules paths relative to the current working directory")
-    parser.add_argument('--simple', '-s', action='store_true', default=False,
-                        help="exclude module information so only class and function names are displayed")
-    parser.add_argument('--quiet', '-q', action='store_true', default=False,
-                        help="suppress non-critical errors")
+        description="Graph function level Python 3 dependencies to understand and fix spaghetti code"
+    )
+    parser.add_argument(
+        "filename",
+        metavar="F",
+        type=str,
+        nargs="*",
+        help="the name(s) of files and directories to examine",
+    )
+    parser.add_argument(
+        "--inverse",
+        "-i",
+        action="store_true",
+        default=False,
+        help="inverse output so that dependencies are listed instead of dependents",
+    )
+    parser.add_argument(
+        "--raw",
+        "-r",
+        action="store_true",
+        default=False,
+        help="remove instruction text and formatting",
+    )
+    parser.add_argument(
+        "--measurements",
+        "-m",
+        action="store_true",
+        default=False,
+        help="prints useful measurements about the relationships between functions",
+    )
+    parser.add_argument(
+        "--draw",
+        "-d",
+        action="store_true",
+        default=False,
+        help="save to result to a .png file in new subdirectory dependency_mapping"
+        + os.sep,
+    )
+    parser.add_argument(
+        "--long",
+        "-l",
+        action="store_true",
+        default=False,
+        help="display modules paths relative to the current working directory",
+    )
+    parser.add_argument(
+        "--simple",
+        "-s",
+        action="store_true",
+        default=False,
+        help="exclude module information so only class and function names are displayed",
+    )
+    parser.add_argument(
+        "--quiet",
+        "-q",
+        action="store_true",
+        default=False,
+        help="suppress non-critical errors",
+    )
     args = parser.parse_args()
 
     if len(args.filename) == 0 and filename is None:
@@ -50,29 +92,44 @@ def get_input(filename=None):
 
     return args
 
+
 # Prints detailed measurments about the Networkx graph
 def print_measurements(nxg):
     measure = Measurements(nxg)
-    print('The average number of dependents and dependencies per function: {0:.2f}'.format(measure.mean_degree))
-    print('The maximum number of dependents and dependencies per function: ' + repr(measure.max_degree))
+    print(
+        "The average number of dependents and dependencies per function: {0:.2f}".format(
+            measure.mean_degree
+        )
+    )
+    print(
+        "The maximum number of dependents and dependencies per function: "
+        + repr(measure.max_degree)
+    )
     if measure.node_connectivity == 0:
-        print('There are isolated functions or groups of isolated functions. Severity: {0:.2f}%'.format(
-            measure.severity))
+        print(
+            "There are isolated functions or groups of isolated functions. Severity: {0:.2f}%".format(
+                measure.severity
+            )
+        )
     else:
-        print('There are no isolated functions or groups of isolated functions. At least {:d} function(s) that '
-              'would need to be removed to isolate at least 1 function.'.format(measure.node_connectivity))
-    print('Total functions found in the search area: ' + repr(measure.node_num))
+        print(
+            "There are no isolated functions or groups of isolated functions. At least {:d} function(s) that "
+            "would need to be removed to isolate at least 1 function.".format(
+                measure.node_connectivity
+            )
+        )
+    print("Total functions found in the search area: " + repr(measure.node_num))
 
 
 # Prints the results including a list of functions and their dependencies in the terminal
 def output_text(search, args):
-
     if args.raw is True:
         print(search.get_graph_str(mode=args.mode))
     else:
-        searched_str = " ".join(search.searched_files) + " ".join(search.searched_directories)
+        searched_str = " ".join(search.searched_files) + " ".join(
+            search.searched_directories
+        )
         if searched_str != "":
-
             if len(search.crawled_imports) is not 0:
                 imports_str = ", ".join(sorted(search.crawled_imports))
                 print("Also crawled these imports: %s" % imports_str)

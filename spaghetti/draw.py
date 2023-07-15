@@ -24,9 +24,10 @@ def draw_graph(nxg, title, mode=Mode.NORMAL):
     # pos = networkx.spectral_layout(nxg)  # More symmetrical but can't handle larger graphs well
     pos = networkx.spring_layout(nxg, k=3)
     networkx.draw_networkx_nodes(nxg, pos, node_size=node_size)
-    networkx.draw_networkx_edges(nxg, pos, edge_color='blue', arrowsize=40, width=width)
-    description = networkx.draw_networkx_labels(nxg, pos, font_size=font_size, font_family='sans-serif',
-                                                font_weight='bold')
+    networkx.draw_networkx_edges(nxg, pos, edge_color="blue", arrowsize=40, width=width)
+    description = networkx.draw_networkx_labels(
+        nxg, pos, font_size=font_size, font_family="sans-serif", font_weight="bold"
+    )
     # Prevents label text from being obstructed
     for node, t in description.items():
         t.set_clip_on(False)
@@ -38,5 +39,5 @@ def draw_graph(nxg, title, mode=Mode.NORMAL):
 
     # Saves the image to a file
     filename = "graph_" + repr(time.time()) + ".png"
-    plt.axis('off')
+    plt.axis("off")
     plt.savefig(directory + os.sep + filename)

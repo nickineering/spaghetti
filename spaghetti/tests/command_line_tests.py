@@ -29,6 +29,6 @@ class CommandLineTest(TestCase):
         self.assertEqual(args.mode, Mode.NORMAL)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # begin the unittest.main()
     unittest.main()

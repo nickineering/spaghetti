@@ -29,7 +29,7 @@ def function4():
 def recursive_function(remaining):
     print("recursive_function " + repr(remaining) + " remaining")
     if int(remaining) > 0:
-        recursive_function(remaining-1)
+        recursive_function(remaining - 1)
 
 
 def outer_function():
@@ -48,7 +48,6 @@ def lambda_example(n):
 
 
 class TestClass:
-
     def __init__(self):
         print("__init__")
         self.method4()
