@@ -130,15 +130,15 @@ def output_text(search, args):
             search.searched_directories
         )
         if searched_str != "":
-            if len(search.crawled_imports) is not 0:
+            if len(search.crawled_imports) != 0:
                 imports_str = ", ".join(sorted(search.crawled_imports))
                 print("Also crawled these imports: %s" % imports_str)
 
             if args.quiet is False:
-                if len(search.uncrawled) is not 0:
+                if len(search.uncrawled) != 0:
                     uncrawled_str = ", ".join(sorted(search.uncrawled))
                     print("Failed to crawl these imports: %s" % uncrawled_str)
-                if len(search.unsure_nodes) is not 0:
+                if len(search.unsure_nodes) != 0:
                     unsure_str = ", ".join(sorted(search.unsure_nodes))
                     if args.mode is not Mode.LONG:
                         unsure_str = unsure_str.replace(os.getcwd() + os.sep, "")
