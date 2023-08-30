@@ -97,7 +97,7 @@ def get_input(filename=None):
 def print_measurements(nxg):
     measure = Measurements(nxg)
     print(
-        "The average number of dependents and dependencies per function: {0:.2f}".format(
+        "The average number of dependents and dependencies per function: {:.2f}".format(
             measure.mean_degree
         )
     )
@@ -107,7 +107,7 @@ def print_measurements(nxg):
     )
     if measure.node_connectivity == 0:
         print(
-            "There are isolated functions or groups of isolated functions. Severity: {0:.2f}%".format(
+            "There are isolated functions or groups of isolated functions. Severity: {:.2f}%".format(
                 measure.severity
             )
         )
